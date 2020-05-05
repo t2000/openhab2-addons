@@ -1,0 +1,50 @@
+<recordDefinition channelid="version" requestByte="0xfd" DataType="Status" Position="4" Length="2" Scale="0.01" />
+<recordDefinition channelid="weekday" requestByte="0xfc" DataType="Settings" Position="5" Length="1" Scale="1.0" />
+<recordDefinition channelid="hours" requestByte="0xfc" DataType="Settings" Position="6" Length="1" Scale="1.0" />
+<recordDefinition channelid="minutes" requestByte="0xfc" DataType="Settings" Position="7" Length="1" Scale="1.0" />
+<recordDefinition channelid="seconds" requestByte="0xfc" DataType="Settings" Position="8" Length="1" Scale="1.0" />
+<recordDefinition channelid="year" requestByte="0xfc" DataType="Settings" Position="9" Length="1" Scale="1.0" />
+<recordDefinition channelid="month" requestByte="0xfc" DataType="Settings" Position="11" Length="1" Scale="1.0" />
+<recordDefinition channelid="day" requestByte="0xfc" DataType="Settings" Position="12" Length="1" Scale="1.0" />
+<recordDefinition channelid="collectorTemperatur" requestByte="0xfb" DataType="Sensor" Position="4" Length="2" Scale="0.1" />
+<recordDefinition channelid="outsideTemperatur" requestByte="0xfb" DataType="Sensor" Position="6" Length="2" Scale="0.1" />
+<recordDefinition channelid="flowTemperatur" requestByte="0xfb" DataType="Sensor" Position="8" Length="2" Scale="0.1" />
+<recordDefinition channelid="returnTemperatur" requestByte="0xfb" DataType="Sensor" Position="10" Length="2" Scale="0.1" />
+<recordDefinition channelid="hotGasTemperatur" requestByte="0xfb" DataType="Sensor" Position="12" Length="2" Scale="0.1" />
+<recordDefinition channelid="dHWTemperatur" requestByte="0xfb" DataType="Sensor" Position="14" Length="2" Scale="0.1" />
+<recordDefinition channelid="flowHC2Temperatur" requestByte="0xfb" DataType="Sensor" Position="16" Length="2" Scale="0.1" />
+<recordDefinition channelid="insideTemperatur" requestByte="0xfb" DataType="Sensor" Position="18" Length="2" Scale="0.1" />
+<recordDefinition channelid="evaporatorTemperatur" requestByte="0xfb" DataType="Sensor" Position="20" Length="2" Scale="0.1" />
+<recordDefinition channelid="condenserTemperature" requestByte="0xfb" DataType="Sensor" Position="22" Length="2" Scale="0.1" />
+<recordDefinition channelid="extractFanSpeed" requestByte="0xfb" DataType="Sensor" Position="30" Length="1" Scale="1.0" />
+<recordDefinition channelid="supplyFanSpeed" requestByte="0xfb" DataType="Sensor" Position="31" Length="1" Scale="1.0" />
+<recordDefinition channelid="exhaustFanSpeed" requestByte="0xfb" DataType="Sensor" Position="32" Length="1" Scale="1.0" />
+<recordDefinition channelid="filteredOutsideTemperatur" requestByte="0xfb" DataType="Sensor" Position="34" Length="2" Scale="0.1" />
+<recordDefinition channelid="dHWPumpStatus" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="1" />
+<recordDefinition channelid="heatingCircuitPumpStatus" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="2" />
+<recordDefinition channelid="solarPumpStatus" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="3" />
+<recordDefinition channelid="mixerOpen" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="4" />
+<recordDefinition channelid="mixerClose" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="5" />
+<recordDefinition channelid="heatPipeValve" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="6" />
+<recordDefinition channelid="DiverterValve" requestByte="0xfb" DataType="Sensor" Position="24" Length="1" Scale="1.0" BitPosition="7" />
+<recordDefinition channelid="CompressorStatus" requestByte="0xfb" DataType="Sensor" Position="25" Length="1" Scale="1.0" BitPosition="4" />
+<recordDefinition channelid="BoosterStage3" requestByte="0xfb" DataType="Sensor" Position="25" Length="1" Scale="1.0" BitPosition="5" />
+<recordDefinition channelid="BoosterStage2" requestByte="0xfb" DataType="Sensor" Position="25" Length="1" Scale="1.0" BitPosition="6" />
+<recordDefinition channelid="BoosterStage1" requestByte="0xfb" DataType="Sensor" Position="25" Length="1" Scale="1.0" BitPosition="7" />
+<recordDefinition channelid="compressorA" requestByte="0x09" DataType="Status" Position="4" Length="2" Scale="1.0" />
+<recordDefinition channelid="compressorB" requestByte="0x09" DataType="Status" Position="6" Length="2" Scale="1.0" />
+<recordDefinition channelid="heatingMode" requestByte="0x09" DataType="Status" Position="8" Length="2" Scale="1.0" />
+<recordDefinition channelid="dHWMode" requestByte="0x09" DataType="Status" Position="10" Length="2" Scale="1.0" />
+<recordDefinition channelid="coolingMode" requestByte="0x09" DataType="Status" Position="12" Length="2" Scale="1.0" />
+<recordDefinition channelid="p01RoomTemperatureStandardMode" requestByte="0x17" DataType="Settings" Position="4" Length="2" Scale="0.1" />
+<recordDefinition channelid="p02RoomTemperatureSetbackMode" requestByte="0x17" DataType="Settings" Position="6" Length="2" Scale="0.1" />
+<recordDefinition channelid="p03RoomTemperatureStandby" requestByte="0x17" DataType="Settings" Position="8" Length="2" Scale="0.1" />
+<recordDefinition channelid="p04DHWTemperatureStandardMode" requestByte="0x17" DataType="Settings" Position="10" Length="2" Scale="0.1" />
+<recordDefinition channelid="p05DHWTemperaturSetbackMode" requestByte="0x17" DataType="Settings" Position="12" Length="2" Scale="0.1" />
+<recordDefinition channelid="p06DHWTemperatureStandby" requestByte="0x17" DataType="Settings" Position="14" Length="2" Scale="0.1" />
+<recordDefinition channelid="p07FanStageStandardMode" requestByte="0x17" DataType="Settings" Position="16" Length="1" Scale="1.0" />
+<recordDefinition channelid="p08FanStageSetbackMode" requestByte="0x17" DataType="Settings" Position="17" Length="1" Scale="1.0" />
+<recordDefinition channelid="p09FanStageStandby" requestByte="0x17" DataType="Settings" Position="18" Length="1" Scale="1.0" />
+<recordDefinition channelid="p10HeatingCircuitTemperatureManual" requestByte="0x17" DataType="Settings" Position="19" Length="2" Scale="0.1" />
+<recordDefinition channelid="p11DHWTemperatureManual" requestByte="0x17" DataType="Settings" Position="21" Length="2" Scale="0.1" />
+<recordDefinition channelid="p12FanStageManual" requestByte="0x17" DataType="Settings" Position="23" Length="1" Scale="1.0" />
