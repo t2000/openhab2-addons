@@ -62,7 +62,7 @@ public class CommunicationService {
         String version = "";
         logger.debug("Loading version info ...");
         Map<String, String> data = readData(versionRequest);
-        String versionKey = StiebelHeatPumpBindingConstants.CHANNEL_VERSION;
+        String versionKey = StiebelHeatPumpBindingConstants.CHANNELID_VERSION;
         version = data.get(versionKey);
         return version;
     }

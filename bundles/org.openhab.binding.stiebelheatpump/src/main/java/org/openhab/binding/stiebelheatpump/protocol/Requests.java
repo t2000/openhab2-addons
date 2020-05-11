@@ -15,21 +15,13 @@ package org.openhab.binding.stiebelheatpump.protocol;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-
 /**
  * Requests class for Stiebel heat pump.
  *
  * @author Peter Kreutzer
  */
-@XmlRootElement(name = "requests")
-@XmlAccessorType(XmlAccessType.FIELD)
 public class Requests {
 
-    @XmlElement(name = "request")
     private List<Request> requests = new ArrayList<Request>();
 
     public Requests() {

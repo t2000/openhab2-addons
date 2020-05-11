@@ -12,16 +12,16 @@
  */
 package org.openhab.binding.stiebelheatpump.internal;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
+import java.io.InputStreamReader;
+import java.net.URL;
 
-import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
-import org.openhab.binding.stiebelheatpump.protocol.Records;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
+import com.thoughtworks.xstream.io.xml.StaxDriver;
 
 /**
  * Config parser class. This class parses the xml configuration file converts it
@@ -36,7 +36,9 @@ public class ConfigParser {
     private final XStream xstream;
 
     public ConfigParser() {
-        this.xstream = new XStream(new DomDriver());
+        // this.xstream = new XStream();
+        this.xstream = new XStream(new StaxDriver());
+
     }
 
     /**
@@ -46,10 +48,31 @@ public class ConfigParser {
      *            file object to load the object from
      * @return List of Requests
      */
-    public List<RecordDefinition> parseConfig(String fileName) {
-        logger.debug("Parsing  heat pump configuration file {}.", fileName);
-        InputStream stream = Thread.currentThread().getContextClassLoader().getResourceAsStream(fileName);
-        Records records = (Records) xstream.fromXML(stream);
-        return records.getRecords();
+    public Records parseConfig(URL configFile) {
+
+        ClassLoader classloader = this.getClass().getClassLoader();
+
+        XStream xstream = new XStream(new StaxDriver());
+        xstream.setClassLoader(classloader);
+        xstream.ignoreUnknownElements();
+        xstream.processAnnotations(Record.class);
+        xstream.processAnnotations(Records.class);
+
+        Records records = null;
+        try {
+            InputStream x = configFile.openStream();
+            // creating an InputStreamReader object
+            InputStreamReader isReader = new InputStreamReader(x);
+            records = (Records) xstream.fromXML(x);
+
+            if (records == null) {
+                logger.debug("Records could not be desialized from: {} " + configFile.toString());
+                return null;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return records;
     }
 }

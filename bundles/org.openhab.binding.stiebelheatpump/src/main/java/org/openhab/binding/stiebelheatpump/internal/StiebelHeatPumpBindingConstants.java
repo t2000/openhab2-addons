@@ -30,7 +30,7 @@ public class StiebelHeatPumpBindingConstants {
     // List of all Thing Type UIDs
     public static final ThingTypeUID THING_TYPE_LWZ206 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_2_06");
     public static final ThingTypeUID THING_TYPE_LWZ236 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_2_36");
-    public static final ThingTypeUID THING_TYPE_LWZ419 = new ThingTypeUID(BINDING_ID, "THZ303_4_19");
+    public static final ThingTypeUID THING_TYPE_LWZ419 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_4_19");
     public static final ThingTypeUID THING_TYPE_LWZ509 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_5_09");
     public static final ThingTypeUID THING_TYPE_LWZ539 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_5_39");
     public static final ThingTypeUID THING_TYPE_LWZ739 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_7_39");
@@ -39,7 +39,11 @@ public class StiebelHeatPumpBindingConstants {
     // List of important Channel ids
     public static final String CHANNELGROUP_VERSION = "channelGroupTypeVersion";
     public static final String CHANNEL_VERSION = "version" + CHANNELGROUPSEPERATOR + "version";
+    public static final String CHANNELID_VERSION = "version";
+    public static final byte REQUEST_VERSION = (byte) 0xFD;
+    public static final byte REQUEST_TIME = (byte) 0xFC;
     public static final String CHANNEL_SETTIME = "time" + CHANNELGROUPSEPERATOR + "setTime";
+    public static final String CHANNELID_TIME = "time";
     public static final String CHANNEL_DUMPRESPONSE = "version" + CHANNELGROUPSEPERATOR + "dumpResponse";
 
     public static final String CHANNELTYPE_TIMESETTING = BINDING_ID + ":" + "timeSetting";

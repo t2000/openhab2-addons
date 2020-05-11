@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
 
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.DecimalType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
@@ -31,7 +32,7 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingStatus;
 import org.eclipse.smarthome.core.thing.ThingStatusDetail;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
-import org.eclipse.smarthome.core.thing.type.ChannelGroupDefinition;
+import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 import org.eclipse.smarthome.core.thing.type.ThingType;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
@@ -187,30 +188,28 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         String channelId = channelUID.getId();
         String[] parts = channelId.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR), 2);
         if (parts.length != 2) {
-            logger.debug("Channel {} to link has invalid structure requestName#recordName", channelId);
+            logger.debug("Channel {} to link has invalid structure ChannelGroup#recordChannelId", channelId);
             return;
         }
-        String requestName = parts[0];
-        String recordName = parts[1];
+        channelId = parts[parts.length - 1];
 
         // verify if channel is already in considered refresh request
         for (Request request : heatPumpRefresh) {
-            if (request.getName().equals(requestName)) {
-                logger.debug("Found valid record definition {} in request {}:{}", requestName, recordName);
-                return;
+            for (RecordDefinition record : request.getRecordDefinitions()) {
+                if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                    logger.debug("Found valid record definitionrequest in refresh for:{}", channelId);
+                    return;
+                }
             }
         }
 
         // record is currently not in the refresh list, add the request
         for (Request request : heatPumpConfiguration) {
-            if (request.getName().equals(requestName)) {
-                for (RecordDefinition record : request.getRecordDefinitions()) {
-                    if (record.getChannelid().equalsIgnoreCase(recordName)) {
-                        logger.debug("Found valid record definition {} in request {}:{}", record.getChannelid(),
-                                request.getName(), request.getDescription());
-                        heatPumpRefresh.add(request);
-                        break;
-                    }
+            for (RecordDefinition record : request.getRecordDefinitions()) {
+                if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                    logger.debug("Found valid record definition in request with ChannelID:{}", record.getChannelid());
+                    heatPumpRefresh.add(request);
+                    break;
                 }
             }
         }
@@ -219,30 +218,42 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
     @Override
     public void channelUnlinked(ChannelUID channelUID) {
         String channelId = channelUID.getId();
-        String[] parts = channelId.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR), 2);
+        String[] parts = channelId.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
         if (parts.length != 2) {
-            logger.debug("Channel {} to unlink has invalid structure requestName#recordName", channelId);
+            logger.debug("Channel {} to unlink has invalid structure channelgroup#channel", channelId);
         }
-        String requestName = parts[0];
-        String recordName = parts[1];
+        channelId = parts[parts.length - 1];
 
-        for (Request request : heatPumpRefresh) {
-            if (request.getName().equals(requestName)) {
-                logger.debug("Found valid record definition {} in request {}:{} to be removed", requestName,
-                        recordName);
-                List<Channel> channels = getThing().getChannels();
-                for (Channel channel : channels) {
-                    String tmpChannelUID = channel.getUID().toString();
-                    if (tmpChannelUID.startsWith(requestName)) {
-                        // there is still a channel link in the thing which will require updates
-                        logger.debug("Request {} will remain in refresh list as channel {} is still linked",
-                                requestName, channel.getUID());
-                        return;
+        requestsLoop: for (Request request : heatPumpRefresh) {
+            String requestByte = DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() });
+            requestLoop: for (RecordDefinition record : request.getRecordDefinitions()) {
+                if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                    logger.debug("Found valid request {} in refresh for:{}", requestByte, channelId);
+                    List<Channel> channels = getThing().getChannels();
+                    for (Channel channel : channels) {
+                        if (!this.isLinked(channel.getUID())) {
+                            continue;
+                        }
+                        String tmpChannelUID = channel.getUID().toString();
+                        for (RecordDefinition searchRecord : request.getRecordDefinitions()) {
+                            if (record.equals(searchRecord)) {
+                                continue;
+                            }
+                            if (tmpChannelUID.endsWith(searchRecord.getChannelid())) {
+                                // there is still a channel link in the thing which will require updates
+                                logger.debug("Request {} will remain in refresh list as channel {} is still linked",
+                                        requestByte, searchRecord.getChannelid());
+                                break requestLoop;
+                            }
+                        }
+
                     }
+                    // no channel found which belongs to same request, remove request
+                    heatPumpRefresh.remove(request);
+                    logger.debug("Request {} removed in refresh list no additionl channel from request linked",
+                            requestByte);
+                    break requestsLoop;
                 }
-                // no channel found which belongs to same request, remove request
-                heatPumpRefresh.remove(request);
-                break;
             }
         }
     }
@@ -369,52 +380,12 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
             // get the records from the thing-type configuration file
             String configFile = thingType.getUID().getId();
-
             ConfigLocator configLocator = new ConfigLocator(configFile + ".xml");
-            List<RecordDefinition> heatPumpRecordConfiguration = configLocator.getConfig();
-            List<ChannelGroupDefinition> channelGroups = thingType.getChannelGroupDefinitions();
-            for (ChannelGroupDefinition channelGroup : channelGroups) {
-
-                String channelGroupID = channelGroup.getId();
-                String requestDescription = channelGroup.getDescription();
-                String requestName = channelGroup.getId();
-                List<Channel> channels = getThing().getChannelsOfGroup(channelGroupID);
-
-                for (Channel channel : channels) {
-                    RecordDefinition record = null;
-                    String channelid = channel.getUID().getId();
-                    for (RecordDefinition recorditem : heatPumpRecordConfiguration) {
-                        if (recorditem.getChannelid() == channelid) {
-                            record = recorditem;
-                            break;
-                        }
-                    }
-
-                    if (record == null) {
-                        continue;
-                    }
-
-                    // search for existing request for the request byte
-                    boolean notFound = true;
-                    for (Request request : heatPumpConfiguration) {
-                        if (request.getRequestByte() == record.getRequestByte()) {
-                            request.getRecordDefinitions().add(record);
-                            notFound = false;
-                            break;
-                        }
-                    }
-
-                    // if not found create a new request with first record
-                    if (notFound) {
-                        Request newRequest = new Request(requestName, requestDescription, record.getRequestByte());
-                        newRequest.getRecordDefinitions().add(record);
-                        heatPumpConfiguration.add(newRequest);
-                    }
-                }
-            }
-
-            categorizeHeatPumpConfiguration();
+            heatPumpConfiguration = configLocator.getRequests().getRequests();
         }
+
+        categorizeHeatPumpConfiguration();
+
         // get version information from the heat pump
         CommunicationService communicationService = null;
         try {
@@ -457,31 +428,39 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         }
 
         for (Map.Entry<String, String> entry : data.entrySet()) {
-            ChannelUID channelUID = new ChannelUID(getThing().getUID(), entry.getKey());
             logger.debug("Data {} has value {}", entry.getKey(), entry.getValue());
-            logger.debug("Update channel UID {} with {}", channelUID, entry.getValue());
+            String channelId = entry.getKey().toString();
 
-            String channelType = getThing().getChannel(channelUID.getId()).getChannelTypeUID().toString();
-            if (channelType.equalsIgnoreCase(CHANNELTYPE_TIMESETTING)) {
-                String newTime = String.format("%04d", Integer.parseInt(entry.getValue()));
-                newTime = new StringBuilder(newTime).insert(newTime.length() - 2, ":").toString();
-                updateState(channelUID, new StringType(newTime));
-                continue;
-            }
+            List<@NonNull Channel> channels = getThing().getChannels();
+            for (Channel ch : channels) {
+                ChannelUID channelUID = ch.getUID();
+                if (ch.getUID().toString().endsWith(channelId)) {
+                    ChannelTypeUID channelTypeUID = ch.getChannelTypeUID();
+                    String channelType = channelTypeUID.toString();
 
-            if (channelType.equalsIgnoreCase(CHANNELTYPE_SWITCHSETTING)) {
-                switch (entry.getValue()) {
-                    case "0":
-                        updateState(channelUID, OnOffType.OFF);
-                        break;
-                    default:
-                        updateState(channelUID, OnOffType.ON);
+                    if (channelType.equalsIgnoreCase(CHANNELTYPE_TIMESETTING)) {
+                        String newTime = String.format("%04d", Integer.parseInt(entry.getValue()));
+                        newTime = new StringBuilder(newTime).insert(newTime.length() - 2, ":").toString();
+                        updateState(channelUID, new StringType(newTime));
                         continue;
+                    }
+
+                    if (channelType.equalsIgnoreCase(CHANNELTYPE_SWITCHSETTING)) {
+                        switch (entry.getValue()) {
+                            case "0":
+                                updateState(channelUID, OnOffType.OFF);
+                                break;
+                            default:
+                                updateState(channelUID, OnOffType.ON);
+                                break;
+                        }
+                    }
+
+                    updateState(channelUID, new DecimalType(entry.getValue()));
                 }
             }
-
-            updateState(channelUID, new DecimalType(entry.getValue()));
         }
+
         updateStatus(ThingStatus.ONLINE);
     }
 
@@ -494,23 +473,24 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
      */
     private boolean categorizeHeatPumpConfiguration() {
         for (Request request : heatPumpConfiguration) {
-            logger.debug("Request : Name -> {}, Description -> {} , RequestByte -> {}", request.getName(),
-                    request.getDescription(),
-                    DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() }));
-            if (request.getName().equalsIgnoreCase("version")) {
-                versionRequest = request;
-                logger.debug("set version request : " + versionRequest.getDescription());
-                continue;
-            }
-
-            if (request.getName().equalsIgnoreCase("time")) {
-                timeRequest = request;
-                logger.debug("set time request : " + timeRequest.getDescription());
-                continue;
-            }
+            String requestByte = DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() });
+            logger.debug("Request : RequestByte -> {}", requestByte);
 
             // group requests in different categories
             for (RecordDefinition record : request.getRecordDefinitions()) {
+
+                if (record.getRequestByte() == REQUEST_VERSION) {
+                    versionRequest = request;
+                    logger.debug("set version request : " + requestByte);
+                    continue;
+                }
+
+                if (record.getRequestByte() == REQUEST_TIME) {
+                    timeRequest = request;
+                    logger.debug("set time request : " + requestByte);
+                    continue;
+                }
+
                 if (record.getDataType() == Type.Settings && !heatPumpSettingConfiguration.contains(request)) {
                     heatPumpSettingConfiguration.add(request);
                 }

@@ -12,21 +12,12 @@
  */
 package org.openhab.binding.stiebelheatpump.protocol;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlType;
-import javax.xml.bind.annotation.XmlValue;
-
 /**
  * Record definition class for Stiebel heat pump requests.
  *
  * @author Peter Kreutzer
  */
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlType(name = "", propOrder = { "value" })
-@XmlRootElement(name = "recordDefinition")
+
 public class RecordDefinition {
 
     public static enum Type {
@@ -35,27 +26,18 @@ public class RecordDefinition {
         Settings;
     }
 
-    @XmlValue
-    protected String value;
-    @XmlAttribute(name = "channelid")
     private String channelid;
 
-    @XmlAttribute(name = "requestByte")
     private byte requestByte;
 
-    @XmlAttribute(name = "DataType", required = true)
     private Type dataType;
 
-    @XmlAttribute(name = "Position")
     private int position;
 
-    @XmlAttribute(name = "Length")
     private int length;
 
-    @XmlAttribute(name = "Scale")
     private double scale;
 
-    @XmlAttribute(name = "BitPosition")
     private int bitPosition;
 
     private int min;
@@ -170,30 +152,6 @@ public class RecordDefinition {
         this.max = max;
         this.step = step;
         this.unit = unit;
-    }
-
-    /**
-     * Gets the value of the value property.
-     *
-     * @return
-     *         possible object is
-     *         {@link String }
-     *
-     */
-    public String getValue() {
-        return value;
-    }
-
-    /**
-     * Sets the value of the value property.
-     *
-     * @param value
-     *            allowed object is
-     *            {@link String }
-     *
-     */
-    public void setValue(String value) {
-        this.value = value;
     }
 
     public String getChannelid() {

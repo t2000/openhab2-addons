@@ -12,9 +12,12 @@
  */
 package org.openhab.binding.stiebelheatpump.internal;
 
-import java.util.List;
+import java.net.URL;
 
-import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
+import org.openhab.binding.stiebelheatpump.protocol.Requests;
+import org.osgi.framework.FrameworkUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Config locator class. This class located the configuration file in the
@@ -24,8 +27,12 @@ import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
  */
 public class ConfigLocator {
 
+    private static final Logger logger = LoggerFactory.getLogger(ConfigLocator.class);
+
     private String file;
     private ConfigParser configParser = new ConfigParser();
+    private Records records = new Records();
+    private Requests requests = new Requests();
 
     public ConfigLocator() {
     }
@@ -39,6 +46,8 @@ public class ConfigLocator {
      */
     public ConfigLocator(String file) {
         this.file = file;
+        getconfig();
+
     }
 
     /**
@@ -46,8 +55,36 @@ public class ConfigLocator {
      *
      * @return All found Configurations
      */
-    public List<RecordDefinition> getConfig() {
-        List<RecordDefinition> config = configParser.parseConfig(file);
-        return config;
+    public void getconfig() {
+        logger.debug("Parsing  heat pump configuration file {}.", file);
+
+        URL entry = FrameworkUtil.getBundle(ConfigParser.class).getEntry("HeatpumpConfig/" + file);
+        if (entry == null) {
+            logger.error("Unable to load  {} config file of heatpump!", file);
+            return;
+        }
+
+        records = configParser.parseConfig(entry);
+        requests = records.getRequests();
+    }
+
+    /**
+     * Searches for the given files in the class path.
+     *
+     * @return All request of the configuration
+     */
+    public Requests getRequests() {
+
+        return requests;
+    }
+
+    /**
+     * Searches for the given files in the class path.
+     *
+     * @return All records of the configuration
+     */
+    public Records getRecords() {
+
+        return records;
     }
 }

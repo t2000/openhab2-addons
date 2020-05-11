@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.openhab.binding.stiebelheatpump.internal.StiebelHeatPumpException;
-import org.openhab.binding.stiebelheatpump.internal.StiebelHeatPumpBindingConstants;
 import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +86,7 @@ public class DataParser {
         for (RecordDefinition recordDefinition : request.getRecordDefinitions()) {
             try {
                 String value = parseRecord(response, recordDefinition);
-                String channel = request.getName() + StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR
-                        + recordDefinition.getChannelid();
+                String channel = recordDefinition.getChannelid();
                 logger.debug("Parsed value {} -> {} with pos: {} , len: {}", channel, value,
                         recordDefinition.getPosition(), recordDefinition.getLength());
                 map.put(channel, value);
