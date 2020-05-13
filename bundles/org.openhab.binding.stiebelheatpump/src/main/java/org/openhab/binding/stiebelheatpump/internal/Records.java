@@ -81,10 +81,13 @@ public class Records {
             switch (record.getDataType()) {
                 case Settings:
                     recordDefinition.setDataType(RecordDefinition.Type.Settings);
+                    break;
                 case Sensor:
                     recordDefinition.setDataType(RecordDefinition.Type.Sensor);
+                    break;
                 case Status:
                     recordDefinition.setDataType(RecordDefinition.Type.Status);
+                    break;
             }
 
             recordDefinition.setLength(record.getLength());

@@ -21,15 +21,15 @@
         <description>Set the time of the heat pump to system time of openhap.</description>
     </channel-type>
     <channel-type id="temperature">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Temperature</label>
         <category>Temperature</category>
-        <state pattern="%.1f °C" readOnly="true"/>
+        <state pattern="%.1f %unit%" readOnly="true"/>
     </channel-type>
     <channel-type id="speed">
-        <item-type>Number</item-type>
+        <item-type>Number:Dimensionless:Percent</item-type>
         <label>Fan speed in %</label>
-        <state pattern="%d %%" readOnly="true"/>
+        <state pattern="%d %unit%" readOnly="true"/>
     </channel-type>
     <channel-type id="hourCounter">
         <item-type>Number</item-type>
@@ -42,24 +42,24 @@
         <state min="10" max="30" step="0.1" pattern="%.1f °C"/>
     </channel-type>
     <channel-type id="dHWTemperatureSetting" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>DHW Temperature Setting in [°C]</label>
-        <state min="10" max="55" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="55" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>
     <channel-type id="temperatureManualSetting" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Temperature Setting in [°C]</label>
-        <state min="10" max="65" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="65" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>
     <channel-type id="maxFlowTemperatureSetting" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Max flow temperature Setting in [°C]</label>
-        <state min="10" max="75" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="75" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>
     <channel-type id="changeoverTemperatureSummerWinter" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Max flow temperature Setting in [°C]</label>
-        <state min="10" max="25" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="25" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>
     <channel-type id="hysteresisChangeoverTemperatureSummerWinter" advanced="true">
         <item-type>Number</item-type>
@@ -72,9 +72,9 @@
         <state min="0" max="24" step="1.0" pattern="%d h"/>
     </channel-type>    
     <channel-type id="bivalencePoint" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Bivalence point Setting in [°C]</label>
-        <state min="-10" max="20" step="0.1" pattern="%.1f °C"/>
+        <state min="-10" max="20" step="0.1" pattern="%.1f %unit%"/>
     </channel-type> 
     <channel-type id="delayedEnableReheating" advanced="true">
         <item-type>Number</item-type>
@@ -83,10 +83,10 @@
         <state  min="0" max="60" step="1" pattern="%d min"/>
     </channel-type>
     <channel-type id="outputElectricalHeating" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Energy</item-type>
         <label>Output electrical heating</label>
         <description>Output electrical heating.</description>
-        <state  min="0" max="10" step="1" pattern="%d kW"/>
+        <state  min="0" max="10" step="1" pattern="%.1f %unit%"/>
     </channel-type>
     <channel-type id="increaseHeating" advanced="true">
         <item-type>Number</item-type>
@@ -111,29 +111,29 @@
         <state min="1" max="100" step="1.0" pattern="%d %%"/>
     </channel-type>
     <channel-type id="maxSetHeatingCircuitTemperature" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Max set heating circuit temperature Setting in [°C]</label>
-        <state min="20" max="65" step="0.1" pattern="%.1f °C"/>
+        <state min="20" max="65" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>   
     <channel-type id="minSetHeatingCircuitTemperature" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Min set heating circuit temperature Setting in [°C]</label>
-        <state min="5" max="40" step="0.1" pattern="%.1f °C"/>
+        <state min="5" max="40" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>   
     <channel-type id="temperaturLimitEvaporator" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Temperature limit evaporator Setting in [°C]</label>
-        <state min="10" max="30" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="30" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>   
     <channel-type id="maxEvaporatorDefrostTime" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Max evaporator defrost time Setting in [°C]</label>
         <state min="2" max="20" step="1.0" pattern="%d min"/>
     </channel-type>   
     <channel-type id="temperaturLimitCondenser" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Temperature limit condenser Setting in [°C]</label>
-        <state min="5" max="10" step="0.1" pattern="%.1f °C"/>
+        <state min="5" max="10" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>   
     <channel-type id="compressorRestartDelayTime" advanced="true">
         <item-type>Number</item-type>
@@ -211,9 +211,9 @@
         <state min="1" max="999" step="1.0"/>
     </channel-type>
     <channel-type id="outputElectricalHeatingStage" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Energy</item-type>
         <label>Switching value for integral portion heating Setting</label>
-        <state min="0" max="10" step="1" pattern="%d kW"/>        
+        <state min="0" max="10" step="1" pattern="%d %unit%"/>        
     </channel-type> 
     <channel-type id="minStartupCycles" advanced="true">
         <item-type>Number</item-type>
@@ -226,14 +226,14 @@
         <state min="1" max="288" step="1" pattern="%d per/day"/>
     </channel-type>    
     <channel-type id="outsideTemperatureMinHeatingCycles" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Outside temperature min heating cycles Setting in [°C]</label>
-        <state min="0" max="20" step="0.1" pattern="%.1f °C"/>
+        <state min="0" max="20" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>    
     <channel-type id="outsideTemperatureMaxHeatingCycles" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Outside temperature max heating cycles Setting in [°C]</label>
-        <state min="0" max="25" step="0.1" pattern="%.1f °C"/>
+        <state min="0" max="25" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>    
     <channel-type id="suppressTemperatureCaptureDuringPumpStart" advanced="true">
         <item-type>Number</item-type>
@@ -291,9 +291,9 @@
         <state min="0" max="240" step="1.0" pattern="%d min"/>
     </channel-type>
     <channel-type id="limitForElectricalReheating" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Limit for Electrical Re-heating Setting in [°C]</label>
-        <state min="-10" max="10" step="1.0" pattern="%d °C"/>
+        <state min="-10" max="10" step="1.0" pattern="%d %unit%"/>
     </channel-type>
     <channel-type id="pasteurisationInterval" advanced="true">
         <item-type>Number</item-type>
@@ -306,9 +306,9 @@
         <state min="6" max="12" step="1.0" pattern="%d h"/>
     </channel-type>
     <channel-type id="pasteurisationHeatupTemperature" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Pasteurization Heat-up Temperature Setting in [°C]</label>
-        <state min="10" max="65" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="65" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>    
     <channel-type id="noOfEnabledElectricalReheatStagesDHWLoading" advanced="true">
         <item-type>Number</item-type>
@@ -316,9 +316,9 @@
         <state min="0" max="3" step="1.0"/>
     </channel-type>    
     <channel-type id="maxFlowTemperatureDHWMode" advanced="true">
-        <item-type>Number</item-type>
+        <item-type>Number:Temperature</item-type>
         <label>Max Flow Temperature DHW Mode</label>
-        <state min="10" max="75" step="0.1" pattern="%.1f °C"/>
+        <state min="10" max="75" step="0.1" pattern="%.1f %unit%"/>
     </channel-type>    
     <channel-type id="noOfErrors">
         <item-type>Number</item-type>

@@ -6,7 +6,7 @@
 
     <thing-type id="LWZ_THZ303_5_39">
         <label>Stiebel heat pump LWZ303 5.39</label>
-        <description>Stiebel heat pump binding for LWZ/THZ connecting via serial RS232 interface to firmware version 5.39.</description>
+        <description>LWZ/THZ connecting with firmware version 5.39.</description>
         <channel-groups>
          <!-- at least 1 channel-group with id = version must be included  -->
             <channel-group id="version" typeId="channelGroupTypeVersion"/>

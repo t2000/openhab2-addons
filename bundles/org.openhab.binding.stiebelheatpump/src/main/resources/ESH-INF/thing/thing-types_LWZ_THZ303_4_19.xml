@@ -5,8 +5,8 @@
 						  xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
     <thing-type id="LWZ_THZ303_4_19">
-        <label>Stiebel heat pump firmware 4.19</label>
-        <description>Stiebel heat pump binding for LWZ/THZ connecting via serial RS232 interface to firmware version 4.19.</description>
+        <label>Stiebel heat pump LWZ303 4.19</label>
+        <description>LWZ/THZ connecting with firmware version 4.19.</description>
         <channel-groups>
          <!-- at least 1 channel-group with id = version must be included  -->
             <channel-group id="version" typeId="channelGroupTypeVersion"/>
@@ -15,11 +15,9 @@
             <channel-group id="operationCounters" typeId="channelGroupTypeOperationCounters"/>
             <channel-group id="nominalValues" typeId="channelGroupTypeNominalValues"/>
             <channel-group id="ventilation" typeId="channelGroupTypeVentilation"/>
-            <channel-group id="heating1" typeId="channelGroupTypeHeating1"/>
-            <channel-group id="heating2" typeId="channelGroupTypeHeating2"/>
-            <channel-group id="evaporator1" typeId="channelGroupTypeEvaporator1"/>
-            <channel-group id="evaporator2" typeId="channelGroupTypeEvaporator2"/>
-            <channel-group id="circulationPump" typeId="channelGroupTypecirculationPump"/>
+            <channel-group id="heating" typeId="channelGroupTypeHeating"/>
+            <channel-group id="evaporator" typeId="channelGroupTypeEvaporator"/>
+            <channel-group id="circulationPump" typeId="channelGroupTypeCirculationPump"/>
             <channel-group id="heatingProgram" typeId="channelGroupTypeHeatingProgram"/>
             <channel-group id="domesticHotWaterProgram" typeId="channelGroupTypeDomesticHotWaterProgram"/>
             <channel-group id="ventilationProgram" typeId="channelGroupTypeVentilationProgram"/>

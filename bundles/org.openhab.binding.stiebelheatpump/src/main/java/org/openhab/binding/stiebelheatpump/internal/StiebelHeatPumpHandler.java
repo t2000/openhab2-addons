@@ -19,13 +19,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.measure.quantity.Energy;
+import javax.measure.quantity.Temperature;
 import javax.xml.bind.DatatypeConverter;
 
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.DecimalType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.library.types.QuantityType;
 import org.eclipse.smarthome.core.library.types.StringType;
+import org.eclipse.smarthome.core.library.unit.SIUnits;
+import org.eclipse.smarthome.core.library.unit.SmartHomeUnits;
 import org.eclipse.smarthome.core.thing.Channel;
 import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.Thing;
@@ -454,9 +459,31 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                                 updateState(channelUID, OnOffType.ON);
                                 break;
                         }
+                        continue;
                     }
 
-                    updateState(channelUID, new DecimalType(entry.getValue()));
+                    String itemType = ch.getAcceptedItemType();
+
+                    switch (itemType) {
+                        case "Number:Temperature":
+                            QuantityType<Temperature> temperatur = new QuantityType<Temperature>(
+                                    Double.valueOf(entry.getValue()), SIUnits.CELSIUS);
+                            updateState(channelUID, temperatur);
+                            break;
+                        case "Number:Energy":
+                            QuantityType<Energy> energy = new QuantityType<Energy>(Double.valueOf(entry.getValue()),
+                                    SmartHomeUnits.KILOWATT_HOUR);
+                            updateState(channelUID, energy);
+                            break;
+                        case "Number:Dimensionless:Percent":
+                            QuantityType percent = new QuantityType(Double.valueOf(entry.getValue()),
+                                    SmartHomeUnits.PERCENT);
+                            updateState(channelUID, percent);
+                            break;
+
+                        default:
+                            updateState(channelUID, new DecimalType(entry.getValue()));
+                    }
                 }
             }
         }
