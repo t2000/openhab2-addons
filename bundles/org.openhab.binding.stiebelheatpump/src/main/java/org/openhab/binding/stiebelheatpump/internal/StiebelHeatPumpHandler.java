@@ -10,7 +10,6 @@ package org.openhab.binding.stiebelheatpump.internal;
 
 import static org.openhab.binding.stiebelheatpump.internal.StiebelHeatPumpBindingConstants.*;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,12 +18,11 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.measure.quantity.Dimensionless;
 import javax.measure.quantity.Energy;
 import javax.measure.quantity.Temperature;
 import javax.xml.bind.DatatypeConverter;
 
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.library.types.DecimalType;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.QuantityType;
@@ -61,14 +59,15 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
     private final SerialPortManager serialPortManager;
     private SerialPortIdentifier portId;
 
-    /** port of interface to heat pump */
-    private String port;
-    /** baudRate of interface to heat pump */
-    private int baudRate;
-    /** waiting time between requests */
-    private int waitingTime;
-    /** refresh interval */
-    private BigDecimal refresh = new BigDecimal(0);
+    private StiebelHeatPumpConfiguration config;
+    // /** port of interface to heat pump */
+    // private String port;
+    // /** baudRate of interface to heat pump */
+    // private int baudRate;
+    // /** waiting time between requests */
+    // private int waitingTime;
+    // /** refresh interval */
+    // private BigDecimal refresh = new BigDecimal(0);
     // ** indicates if the communication is currently in use by a call
     boolean communicationInUse = false;
 
@@ -106,7 +105,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         int retry = 0;
         while (communicationInUse & (retry < MAXRETRY)) {
             try {
-                Thread.sleep(waitingTime);
+                Thread.sleep(config.waitingTime);
             } catch (InterruptedException e) {
                 logger.debug("Could not get access to heatpump ! : {}", e.toString());
             }
@@ -119,8 +118,8 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
         CommunicationService communicationService = null;
         try {
-            communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, port, baudRate,
-                    waitingTime);
+            communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, config.port,
+                    config.baudRate, config.waitingTime);
             Map<String, String> data = new HashMap<String, String>();
 
             switch (channelUID.getId()) {
@@ -131,7 +130,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                 case CHANNEL_DUMPRESPONSE:
                     for (byte requestByte : DEBUGBYTES) {
                         communicationService.dumpResponse(requestByte);
-                        Thread.sleep(waitingTime);
+                        Thread.sleep(config.waitingTime);
                     }
                     updateState(channelUID, OnOffType.OFF);
                     break;
@@ -196,7 +195,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             logger.debug("Channel {} to link has invalid structure ChannelGroup#recordChannelId", channelId);
             return;
         }
-        channelId = parts[parts.length - 1];
+        channelId = parts[1];
 
         // verify if channel is already in considered refresh request
         for (Request request : heatPumpRefresh) {
@@ -213,6 +212,9 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             for (RecordDefinition record : request.getRecordDefinitions()) {
                 if (record.getChannelid().equalsIgnoreCase(channelId)) {
                     logger.debug("Found valid record definition in request with ChannelID:{}", record.getChannelid());
+                    // TODO: we should also fill heatPumpRefresh once on startup by iterating through all channels and
+                    // check which one is linked because there might be channels linked to the thing BEFORE we are
+                    // initialized
                     heatPumpRefresh.add(request);
                     break;
                 }
@@ -227,8 +229,11 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         if (parts.length != 2) {
             logger.debug("Channel {} to unlink has invalid structure channelgroup#channel", channelId);
         }
-        channelId = parts[parts.length - 1];
+        channelId = parts[1];
 
+        // TODO: remove jump labels and simplify the logic: I tried to understand this within 5 minutes but couldn't ->
+        // need more time -> definitely an indicator that its too complex. and jump labels are VERY bad too.
+        // Sonarlint also reports this as a method with cognitive complexity of 35 and 15 is recommended
         requestsLoop: for (Request request : heatPumpRefresh) {
             String requestByte = DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() });
             requestLoop: for (RecordDefinition record : request.getRecordDefinitions()) {
@@ -265,44 +270,66 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
+        updateStatus(ThingStatus.UNKNOWN);
 
-        String msg = "Error occurred while initializing stiebel heat pump handler! ";
-        try {
-            Configuration config = getThing().getConfiguration();
-            port = (String) config.get(PROPERTY_PORT);
-            baudRate = ((BigDecimal) config.get(PROPERTY_BAUDRATE)).intValueExact();
-            refresh = (BigDecimal) config.get(PROPERTY_REFRESH);
-            waitingTime = ((BigDecimal) config.get(PROPERTY_WAITINGTIME)).intValueExact();
-
-            logger.debug(
-                    "Initializing stiebel heat pump handler '{}' with configuration: port '{}', baudRate {}, refresh {}.",
-                    getThing().getUID().toString(), port, baudRate, refresh);
-
-            portId = serialPortManager.getIdentifier(port);
-            if (portId == null) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port is not known!");
-                return;
-            }
-            boolean success = getInitialHeatPumpSettings();
-            if (success) {
-                updateStatus(ThingStatus.ONLINE);
-                startTimeRefresh();
-                startAutomaticRefresh();
-            } else {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, msg);
-            }
-        } catch (Exception ex) {
-            msg = msg + " : " + ex.getMessage();
-            logger.error(msg, ex);
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, msg);
+        this.config = getConfigAs(StiebelHeatPumpConfiguration.class);
+        if (!validateConfiguration(config)) {
+            return;
         }
+
+        logger.debug(
+                "Initializing stiebel heat pump handler '{}' with configuration: port '{}', baudRate {}, refresh {}.",
+                getThing().getUID().toString(), config.port, config.baudRate, config.refresh);
+
+        portId = serialPortManager.getIdentifier(config.port);
+        if (portId == null) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port is not known!");
+            return;
+        }
+
+        scheduler.schedule(this::getInitialHeatPumpSettings, 0, TimeUnit.SECONDS);
+    }
+
+    private boolean validateConfiguration(StiebelHeatPumpConfiguration config) {
+        if (config.port == null || config.port.isEmpty()) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port must be set!");
+            return false;
+        }
+
+        if (config.baudRate < 9600 || config.baudRate > 115200) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
+                    "BaudRate must be between 9600 and 115200");
+            return false;
+        }
+
+        if (config.refresh < 10) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
+                    "Refresh rate must be larger than 10");
+            return false;
+        }
+
+        if (config.waitingTime <= 0) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR,
+                    "Waiting time between requests must be larger than 0");
+            return false;
+        }
+
+        return true;
     }
 
     @Override
     public void dispose() {
-        if (refreshJob != null) {
+        if (refreshJob != null && !refreshJob.isCancelled()) {
             refreshJob.cancel(true);
         }
+        refreshJob = null;
+
+        if (timeRefreshJob != null && !timeRefreshJob.isCancelled()) {
+            timeRefreshJob.cancel(true);
+        }
+        timeRefreshJob = null;
+
+        // TODO: close/finalize our communicator here
     }
 
     /**
@@ -313,7 +340,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         refreshJob = scheduler.scheduleWithFixedDelay(() -> {
 
             if (heatPumpRefresh.isEmpty()) {
-                logger.info("nothing to update, refresh list is empty");
+                logger.debug("nothing to update, refresh list is empty");
                 return;
             }
 
@@ -322,10 +349,11 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             }
             communicationInUse = true;
 
+            // TODO: as stated before we should only have one communicationService as a class variable
             CommunicationService communicationService = null;
             try {
-                communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, port,
-                        baudRate, waitingTime);
+                communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, config.port,
+                        config.baudRate, config.waitingTime);
                 Map<String, String> data = communicationService.getRequestData(heatPumpRefresh);
                 updateCannels(data);
             } catch (Exception e) {
@@ -337,7 +365,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                     communicationInUse = false;
                 }
             }
-        }, 2, refresh.intValue(), TimeUnit.SECONDS);
+        }, 2, config.refresh, TimeUnit.SECONDS);
     }
 
     /**
@@ -345,7 +373,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
      * once a week
      */
     private void startTimeRefresh() {
-        timeRefreshJob = scheduler.scheduleAtFixedRate(() -> {
+        timeRefreshJob = scheduler.scheduleWithFixedDelay(() -> {
             if (communicationInUse) {
                 return;
             }
@@ -353,12 +381,12 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
             CommunicationService communicationService = null;
             try {
-                communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, port,
-                        baudRate, waitingTime);
+                communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, config.port,
+                        config.baudRate, config.waitingTime);
                 Map<String, String> time = communicationService.setTime(timeRequest);
                 updateCannels(time);
 
-            } catch (Exception e) {
+            } catch (Exception e) { // TODO: see above we should not catch Exception directly
                 logger.debug(e.getMessage());
             } finally {
                 if (communicationService != null) {
@@ -377,30 +405,34 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
      *
      * @return true if heat pump information could be successfully connected and read
      */
-    private boolean getInitialHeatPumpSettings() {
-        String thingVersion = getThing().getProperties().get("firmware");
+    private void getInitialHeatPumpSettings() {
+        String thingFirmwareVersion = getThing().getProperties().get(Thing.PROPERTY_FIRMWARE_VERSION);
         String version = "";
 
-        if (heatPumpConfiguration.isEmpty()) {
+        String tmpErrorMessage = null;
 
+        if (heatPumpConfiguration.isEmpty()) {
             // get the records from the thing-type configuration file
             String configFile = thingType.getUID().getId();
             ConfigLocator configLocator = new ConfigLocator(configFile + ".xml");
             heatPumpConfiguration = configLocator.getRequests().getRequests();
         }
 
+        // TODO: this method stores requests as class variables as a side effect, the reader of this method doesn't know
+        // (and doesn't expect) that without looking into it
         categorizeHeatPumpConfiguration();
 
         // get version information from the heat pump
         CommunicationService communicationService = null;
         try {
-
-            communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, port, baudRate,
-                    waitingTime);
+            communicationService = new CommunicationService(serialPortManager, heatPumpConfiguration, config.port,
+                    config.baudRate, config.waitingTime);
             version = communicationService.getversion(versionRequest);
         } catch (Exception e) {
+            // TODO: we should never catch Exception, use a more granular one. Also we should keep the
+            // CommunicationService running as long as the thinghandler is not disposed, what do you think?
             logger.debug(e.getMessage());
-            return false;
+            tmpErrorMessage = "Communication problem with heatpump";
         } finally {
             if (communicationService != null) {
                 communicationService.finalizer();
@@ -408,16 +440,21 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         }
 
         logger.info("Heat pump has version {}", version);
-        ChannelUID versionChannelUID = new ChannelUID(getThing().getUID(), CHANNEL_VERSION);
-        updateState(versionChannelUID, new StringType(version));
 
-        if (!thingVersion.equals(version)) {
-            logger.error("Thingtype version of heatpump {} is not the same as the heatpump version {}", thingVersion,
-                    version);
-            return false;
+        if (!thingFirmwareVersion.equals(version)) {
+            logger.error("Thingtype version of heatpump {} is not the same as the heatpump version {}",
+                    thingFirmwareVersion, version);
+            tmpErrorMessage = "Heatpump report firmware " + version + " but this ThingType is for version "
+                    + thingFirmwareVersion;
         }
 
-        return true;
+        if (tmpErrorMessage == null) {
+            updateStatus(ThingStatus.ONLINE);
+            startTimeRefresh();
+            startAutomaticRefresh();
+        } else {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, tmpErrorMessage);
+        }
     }
 
     /**
@@ -427,7 +464,6 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
      *            Map<String, String> of data coming from heat pump
      */
     private void updateCannels(Map<String, String> data) {
-
         if (data.isEmpty()) {
             return;
         }
@@ -436,29 +472,19 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             logger.debug("Data {} has value {}", entry.getKey(), entry.getValue());
             String channelId = entry.getKey().toString();
 
-            List<@NonNull Channel> channels = getThing().getChannels();
-            for (Channel ch : channels) {
+            for (Channel ch : getThing().getChannels()) {
                 ChannelUID channelUID = ch.getUID();
                 if (ch.getUID().toString().endsWith(channelId)) {
                     ChannelTypeUID channelTypeUID = ch.getChannelTypeUID();
                     String channelType = channelTypeUID.toString();
 
                     if (channelType.equalsIgnoreCase(CHANNELTYPE_TIMESETTING)) {
-                        String newTime = String.format("%04d", Integer.parseInt(entry.getValue()));
-                        newTime = new StringBuilder(newTime).insert(newTime.length() - 2, ":").toString();
-                        updateState(channelUID, new StringType(newTime));
+                        updateTimeChannel(entry.getValue(), channelUID);
                         continue;
                     }
 
                     if (channelType.equalsIgnoreCase(CHANNELTYPE_SWITCHSETTING)) {
-                        switch (entry.getValue()) {
-                            case "0":
-                                updateState(channelUID, OnOffType.OFF);
-                                break;
-                            default:
-                                updateState(channelUID, OnOffType.ON);
-                                break;
-                        }
+                        updateSwitchSettingChannel(entry.getValue(), channelUID);
                         continue;
                     }
 
@@ -466,9 +492,9 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
                     switch (itemType) {
                         case "Number:Temperature":
-                            QuantityType<Temperature> temperatur = new QuantityType<Temperature>(
+                            QuantityType<Temperature> temperature = new QuantityType<Temperature>(
                                     Double.valueOf(entry.getValue()), SIUnits.CELSIUS);
-                            updateState(channelUID, temperatur);
+                            updateState(channelUID, temperature);
                             break;
                         case "Number:Energy":
                             QuantityType<Energy> energy = new QuantityType<Energy>(Double.valueOf(entry.getValue()),
@@ -476,8 +502,8 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                             updateState(channelUID, energy);
                             break;
                         case "Number:Dimensionless:Percent":
-                            QuantityType percent = new QuantityType(Double.valueOf(entry.getValue()),
-                                    SmartHomeUnits.PERCENT);
+                            QuantityType<Dimensionless> percent = new QuantityType<Dimensionless>(
+                                    Double.valueOf(entry.getValue()), SmartHomeUnits.PERCENT);
                             updateState(channelUID, percent);
                             break;
 
@@ -489,6 +515,20 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         }
 
         updateStatus(ThingStatus.ONLINE);
+    }
+
+    private void updateSwitchSettingChannel(String setting, ChannelUID channelUID) {
+        if ("0".equals(setting)) {
+            updateState(channelUID, OnOffType.OFF);
+        } else {
+            updateState(channelUID, OnOffType.ON);
+        }
+    }
+
+    private void updateTimeChannel(String timeString, ChannelUID channelUID) {
+        String newTime = String.format("%04d", Integer.parseInt(timeString));
+        newTime = new StringBuilder(newTime).insert(newTime.length() - 2, ":").toString();
+        updateState(channelUID, new StringType(newTime));
     }
 
     /**
@@ -530,6 +570,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             }
         }
 
+        // TODO: we should not store requests in class variables
         if (versionRequest == null || timeRequest == null) {
             logger.debug("version or time request could not be found in configuration");
             return false;

@@ -19,11 +19,8 @@ package org.openhab.binding.stiebelheatpump.internal;
  */
 public class StiebelHeatPumpConfiguration {
 
-    /**
-     * Sample configuration parameter. Replace with your own.
-     */
     public String port;
-    public Integer refresh;
-    public Integer waitingTime;
-    public Integer baudRate;
+    public int refresh;
+    public int waitingTime;
+    public int baudRate;
 }
