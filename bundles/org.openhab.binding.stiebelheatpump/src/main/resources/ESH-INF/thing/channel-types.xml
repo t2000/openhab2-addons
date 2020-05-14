@@ -211,7 +211,7 @@
 		<state min="1" max="999" step="1.0" />
 	</channel-type>
 	<channel-type id="outputElectricalHeatingStage" advanced="true">
-		<item-type>Number:Energy</item-type>
+		<item-type>Number:Power</item-type>
 		<label>Switching value for integral portion heating Setting</label>
 		<state min="0" max="10" step="1" pattern="%d %unit%" />
 	</channel-type>
@@ -371,7 +371,7 @@
 	<channel-type id="day" advanced="true">
 		<item-type>Number</item-type>
 		<label>Day</label>
-		<description>Hours of the current time.</description>
+		<description>Day of the current time.</description>
 		<state min="1" max="31" step="1" pattern="%d dd" readOnly="true" />
 	</channel-type>
 	<channel-type id="operationMode" advanced="true">

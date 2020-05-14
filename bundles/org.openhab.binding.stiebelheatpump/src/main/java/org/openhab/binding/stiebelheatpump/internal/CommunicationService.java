@@ -31,39 +31,56 @@ import org.slf4j.LoggerFactory;
 
 public class CommunicationService {
 
+    private Logger logger = LoggerFactory.getLogger(CommunicationService.class);
+
     private ProtocolConnector connector;
     private static int MAXRETRIES = 5;
-    private final int INPUT_BUFFER_LENGTH = 1024;
+    private static int INPUT_BUFFER_LENGTH = 1024;
     private byte buffer[] = new byte[INPUT_BUFFER_LENGTH];
-
-    private static int waitingTime = 1200;
 
     DataParser parser = new DataParser();
 
-    private Logger logger = LoggerFactory.getLogger(CommunicationService.class);
+    private SerialPortManager serialPortManager;
+    private String serialPortName;
+    private int baudRate;
+    private int waitingTime = 1200;
 
-    public CommunicationService(SerialPortManager serialPortManager, List<Request> configuration, String serialPortName,
-            int baudRate, int waitingTime) throws StiebelHeatPumpException {
+    public CommunicationService(SerialPortManager serialPortManager, String serialPortName, int baudRate,
+            int waitingTime) {
+        this.waitingTime = waitingTime;
+        this.baudRate = baudRate;
+        this.serialPortName = serialPortName;
+        this.serialPortManager = serialPortManager;
         this.connector = new SerialConnector();
-        connector.connect(serialPortManager, serialPortName, baudRate);
-        CommunicationService.waitingTime = waitingTime;
     }
 
     public void finalizer() {
         connector.disconnect();
     }
 
+    public void connect() {
+        try {
+            connector.connect(serialPortManager, serialPortName, baudRate);
+        } catch (StiebelHeatPumpException e) {
+        }
+    }
+
+    public void disconnect() {
+        connector.disconnect();
+    }
+
     /**
-     * This method reads the version information from the heat pump
+     * This method parses the version information from the heat pump response
      *
      * @return version string, e.g: 2.06
      */
-    public String getversion(Request versionRequest) throws StiebelHeatPumpException {
+    public String getVersion(Request versionRequest) throws StiebelHeatPumpException {
         String version = "";
         logger.debug("Loading version info ...");
         Map<String, String> data = readData(versionRequest);
         String versionKey = StiebelHeatPumpBindingConstants.CHANNELID_VERSION;
         version = data.get(versionKey);
+
         return version;
     }
 
@@ -74,7 +91,7 @@ public class CommunicationService {
      * @return map of heat pump setting values
      */
     public Map<String, String> getRequestData(List<Request> requests) throws StiebelHeatPumpException {
-        Map<String, String> data = new HashMap<String, String>();
+        Map<String, String> data = new HashMap<>();
         for (Request request : requests) {
             logger.debug("Loading data for request {} ...", request.getName());
             try {
@@ -98,7 +115,7 @@ public class CommunicationService {
     public Map<String, String> setTime(Request timeRequest) throws StiebelHeatPumpException {
 
         startCommunication();
-        Map<String, String> data = new HashMap<String, String>();
+        Map<String, String> data = new HashMap<>();
 
         if (timeRequest == null) {
             logger.warn("Could not find request definition for time settings! Skip setting time.");
@@ -126,64 +143,55 @@ public class CommunicationService {
             boolean updateRequired = false;
 
             for (RecordDefinition record : timeRequest.getRecordDefinitions()) {
-                String fullname = record.getChannelid();
-                String entryValue = data.get(timeRequest.getName()
-                        + StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR + record.getChannelid());
+                String channelid = record.getChannelid();
+                String value = data.get(channelid);
 
-                if (fullname.equalsIgnoreCase("weekday") && !entryValue.equals(weekday)) {
+                if (channelid.equalsIgnoreCase("weekday") && !value.equals(weekday)) {
                     updateRequired = true;
                     response = parser.composeRecord(weekday, response, record);
-                    logger.debug("weekday needs update from {} to {}", entryValue, weekday);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("hours") && !entryValue.equals(hours)) {
+                if (channelid.equalsIgnoreCase("hours") && !channelid.equals(hours)) {
                     updateRequired = true;
                     response = parser.composeRecord(hours, response, record);
-                    logger.debug("Hours needs update from {} to {}", entryValue, hours);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("minutes") && !entryValue.equals(minutes)) {
+                if (channelid.equalsIgnoreCase("minutes") && !value.equals(minutes)) {
                     updateRequired = true;
                     response = parser.composeRecord(minutes, response, record);
-                    logger.debug("Minutes needs update from {} to {}", entryValue, minutes);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("seconds") && !entryValue.equals(seconds)) {
+                if (channelid.equalsIgnoreCase("seconds") && !value.equals(seconds)) {
                     updateRequired = true;
                     response = parser.composeRecord(seconds, response, record);
-                    logger.debug("Seconds needs update from {} to {}", entryValue, seconds);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("year") && !entryValue.equals(year)) {
+                if (channelid.equalsIgnoreCase("year") && !value.equals(year)) {
                     updateRequired = true;
                     response = parser.composeRecord(year, response, record);
-                    logger.debug("Year needs update from {} to {}", entryValue, year);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("month") && !entryValue.equals(month)) {
+                if (channelid.equalsIgnoreCase("month") && !value.equals(month)) {
                     updateRequired = true;
                     response = parser.composeRecord(month, response, record);
-                    logger.debug("Month needs update from {} to {}", entryValue, month);
                     continue;
                 }
-                if (fullname.equalsIgnoreCase("day") && !entryValue.equals(day)) {
+                if (channelid.equalsIgnoreCase("day") && !value.equals(day)) {
                     updateRequired = true;
                     response = parser.composeRecord(day, response, record);
-                    logger.debug("Day needs update from {} to {}", entryValue, day);
-                    continue;
                 }
             }
 
             if (updateRequired) {
                 Thread.sleep(waitingTime);
-                logger.info("Time need update. Set time to " + dt.toString());
+                logger.info("Time need update. Set time to {}", dt);
                 setData(response);
 
                 Thread.sleep(waitingTime);
                 response = getData(requestMessage);
                 data = parser.parseRecords(response, timeRequest);
                 dt = DateTime.now();
-                logger.debug("Current time is : {}", dt.toString());
+                logger.debug("Current time is : {}", dt);
 
             }
             return data;
@@ -208,7 +216,7 @@ public class CommunicationService {
         byte requestMessage[] = createRequestMessage(request);
         boolean validData = false;
         try {
-            while (!validData) {
+            while (true) {
                 startCommunication();
                 responseAvailable = getData(requestMessage);
                 responseAvailable = parser.fixDuplicatedBytes(responseAvailable);
@@ -236,32 +244,29 @@ public class CommunicationService {
             throws StiebelHeatPumpException {
         Request updateRequest = null;
         RecordDefinition updateRecord = null;
-        Map<String, String> data = new HashMap<String, String>();
+        Map<String, String> data = new HashMap<>();
 
         if (parameter == null) {
             logger.debug("update parameter is NULL");
             return data;
         }
 
-        String[] parts = parameter.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR), 2);
+        String[] parts = parameter.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
         if (parts.length != 2) {
-            logger.debug("Parameter {} to update has invalid structure requestName#recordname", parameter);
+            logger.debug("Channel {} to unlink has invalid structure channelgroup#channel", parameter);
         }
-        String requestName = parts[0];
-        String recordName = parts[1];
+        String channelId = parts[parts.length - 1];
 
         // we lookup the right request definition that contains the parameter to
         // be updated
         for (Request request : heatPumpSettingConfiguration) {
-            if (request.getName().equalsIgnoreCase(requestName)) {
-                updateRequest = request;
-                for (RecordDefinition record : request.getRecordDefinitions()) {
-                    if (record.getChannelid().equalsIgnoreCase(recordName)) {
-                        updateRecord = record;
-                        logger.debug("Found valid record definition {} in request {}:{}", record.getChannelid(),
-                                request.getName(), request.getDescription());
-                        break;
-                    }
+            for (RecordDefinition record : request.getRecordDefinitions()) {
+                if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                    updateRecord = record;
+                    updateRequest = request;
+                    logger.debug("Found valid record definition {} in request {}:{}", record.getChannelid(),
+                            request.getName(), request.getDescription());
+                    break;
                 }
             }
         }
@@ -314,11 +319,10 @@ public class CommunicationService {
             }
 
         } catch (StiebelHeatPumpException e) {
-            logger.error("Stiebel heat pump communication error during update of value! " + e.toString());
+            logger.error("Stiebel heat pump communication error during update of value ! {} ", e);
         } catch (InterruptedException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
-        } finally {
         }
         return data;
     }
@@ -356,8 +360,7 @@ public class CommunicationService {
             }
             return;
         } catch (Exception e) {
-            logger.error(String.format("Could not get data from heat pump! for request %02X, {}", requestByte,
-                    e.toString()));
+            logger.error(String.format("Could not get data from heat pump! for request %02X", requestByte));
         }
         return;
     }
@@ -589,4 +592,5 @@ public class CommunicationService {
         }
         return requestMessage;
     }
+
 }

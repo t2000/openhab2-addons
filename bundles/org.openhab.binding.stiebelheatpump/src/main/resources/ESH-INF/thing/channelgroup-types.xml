@@ -358,7 +358,6 @@
 			<channel id="p30SwitchingValueIntegralPortionHeating" typeId="switchingValueIntegralPortionHeating">
 				<label>P30 Switching value integral portion heating</label>
 				<description>P30 Switching value integral portion heating setting</description>
-				>
 			</channel>
 			<channel id="p31AmountOfUnlockedElectricalBoosterStages" typeId="fanStageSetting">
 				<label>P31 Amount of unlocked electrical booster stages</label>
@@ -390,10 +389,10 @@
 				<label>P79 Delayed enable re-heating</label>
 				<description>P79 Delayed enable re-heating setting</description>
 			</channel>
-			<channel id="outputElectricalHeatingStage1" typeId="outputElectricalHeatingStage">
-				<label>P79 Delayed enable re-heating</label>
-				<description>P79 Delayed enable re-heating setting</description>
-			</channel>
+            <channel id="outputElectricalHeatingStage1" typeId="outputElectricalHeatingStage">
+                <label>Electrical heating stage 1</label>
+                <description>Electrical heating stage 1 in [kW]</description>               
+            </channel>
 		</channels>
 	</channel-group-type>
 	<channel-group-type id="channelGroupTypeEvaporator" advanced="true">
