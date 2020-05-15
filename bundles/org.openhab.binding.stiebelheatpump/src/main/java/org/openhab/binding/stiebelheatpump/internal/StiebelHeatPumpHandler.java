@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.measure.quantity.Dimensionless;
 import javax.measure.quantity.Power;
@@ -242,13 +243,20 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             return;
         }
 
+        String availablePorts = serialPortManager.getIdentifiers().map(id -> id.getName())
+                .collect(Collectors.joining(", "));
+
         logger.debug(
-                "Initializing stiebel heat pump handler '{}' with configuration: port '{}', baudRate {}, refresh {}.",
-                getThing().getUID(), config.port, config.baudRate, config.refresh);
+                "Initializing stiebel heat pump handler '{}' with configuration: port '{}', baudRate {}, refresh {}. Available ports are : {}",
+                getThing().getUID(), config.port, config.baudRate, config.refresh, availablePorts);
+
+        updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.HANDLER_CONFIGURATION_PENDING,
+                "Waiting for messages from device");
 
         SerialPortIdentifier portId = serialPortManager.getIdentifier(config.port);
         if (portId == null) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.CONFIGURATION_ERROR, "Port is not known!");
+            logger.debug("Serial port {} was not found, available ports are : {} ", config.port, availablePorts);
             return;
         }
 
