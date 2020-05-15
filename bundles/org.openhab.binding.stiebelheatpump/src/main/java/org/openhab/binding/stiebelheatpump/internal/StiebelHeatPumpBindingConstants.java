@@ -34,6 +34,7 @@ public class StiebelHeatPumpBindingConstants {
     public static final ThingTypeUID THING_TYPE_LWZ509 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_5_09");
     public static final ThingTypeUID THING_TYPE_LWZ539 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_5_39");
     public static final ThingTypeUID THING_TYPE_LWZ739 = new ThingTypeUID(BINDING_ID, "LWZ_THZ303_7_39");
+    public static final ThingTypeUID THING_TYPE_LWZ759 = new ThingTypeUID(BINDING_ID, "LWZ_THZ504_7_59");
     public static final ThingTypeUID THING_TYPE_THZ55_762 = new ThingTypeUID(BINDING_ID, "THZ55_7_62");
 
     // List of important Channel ids
