@@ -40,6 +40,7 @@ public class StiebelHeatPumpHandlerFactory extends BaseThingHandlerFactory {
             add(THING_TYPE_LWZ509);
             add(THING_TYPE_LWZ539);
             add(THING_TYPE_LWZ739);
+            add(THING_TYPE_LWZ739);
             add(THING_TYPE_THZ55_762);
         }
     };
