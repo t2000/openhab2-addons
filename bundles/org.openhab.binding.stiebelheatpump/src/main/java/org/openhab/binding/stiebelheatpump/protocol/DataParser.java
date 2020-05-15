@@ -91,7 +91,6 @@ public class DataParser {
                         recordDefinition.getPosition(), recordDefinition.getLength());
                 map.put(channel, value);
             } catch (StiebelHeatPumpException e) {
-                continue;
             }
         }
         return map;

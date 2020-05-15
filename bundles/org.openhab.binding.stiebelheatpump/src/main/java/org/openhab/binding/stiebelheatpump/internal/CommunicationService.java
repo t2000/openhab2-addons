@@ -21,6 +21,7 @@ import javax.xml.bind.DatatypeConverter;
 
 import org.eclipse.smarthome.io.transport.serial.SerialPortManager;
 import org.joda.time.DateTime;
+import org.joda.time.LocalDateTime;
 import org.openhab.binding.stiebelheatpump.protocol.DataParser;
 import org.openhab.binding.stiebelheatpump.protocol.ProtocolConnector;
 import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
@@ -130,7 +131,7 @@ public class CommunicationService {
             data = parser.parseRecords(response, timeRequest);
 
             // get current time from local machine
-            DateTime dt = DateTime.now();
+            LocalDateTime dt = DateTime.now().toLocalDateTime();
             logger.debug("Current time is : {}", dt.toString());
             String weekday = Integer.toString(dt.getDayOfWeek());
             String day = Integer.toString(dt.getDayOfMonth());
@@ -190,8 +191,10 @@ public class CommunicationService {
                 Thread.sleep(waitingTime);
                 response = getData(requestMessage);
                 data = parser.parseRecords(response, timeRequest);
-                dt = DateTime.now();
-                logger.debug("Current time is : {}", dt);
+
+                for (Map.Entry<String, String> entry : data.entrySet()) {
+                    logger.info("Key = " + entry.getKey() + ", Value = " + entry.getValue());
+                }
 
             }
             return data;
