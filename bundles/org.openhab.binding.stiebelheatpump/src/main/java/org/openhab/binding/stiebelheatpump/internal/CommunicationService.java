@@ -299,7 +299,7 @@ public class CommunicationService {
             data = parser.parseRecords(response, updateRequest);
 
             // lookup parameter value in the data
-            String currentState = data.get(parameter);
+            String currentState = data.get(channelId);
             if (currentState.equals(value)) {
                 // current State is already same as new values!
                 logger.debug("Current State for {} is already {}.", parameter, value);
