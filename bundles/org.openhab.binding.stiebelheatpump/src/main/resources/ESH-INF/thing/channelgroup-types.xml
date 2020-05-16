@@ -11,6 +11,7 @@
 			<!-- at least 1 channel-group with id = version must be included -->
 			<channel id="version" typeId="version" />
 			<channel id="dumpResponse" typeId="dumpResponse" />
+			<channel id="refreshTime" typeId="refreshDateTime" />	
 		</channels>
 	</channel-group-type>
 	<channel-group-type id="channelGroupTypeTime" advanced="true">

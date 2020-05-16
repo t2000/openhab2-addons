@@ -42,6 +42,8 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.io.transport.serial.SerialPortIdentifier;
 import org.eclipse.smarthome.io.transport.serial.SerialPortManager;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDateTime;
 import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
 import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition.Type;
 import org.openhab.binding.stiebelheatpump.protocol.Request;
@@ -61,6 +63,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
     private StiebelHeatPumpConfiguration config;
     CommunicationService communicationService;
     boolean communicationInUse = false;
+    public static final String DATE_PATTERN_WITH_TZ = "yyyy-MM-dd HH:mm:ss z";
 
     /** heat pump request definition */
     private List<Request> heatPumpConfiguration = new ArrayList<>();
@@ -331,6 +334,8 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                 communicationService.connect();
                 Map<String, String> data = communicationService.getRequestData(heatPumpRefresh);
                 updateCannels(data);
+                LocalDateTime dt = DateTime.now().toLocalDateTime();
+                updateState(CHANNEL_LASTUPDATE, new StringType(dt.toString(DATE_PATTERN_WITH_TZ)));
             } catch (Exception e) {
                 logger.debug("Exception occurred during execution: {}", e.getMessage(), e);
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, e.getMessage());

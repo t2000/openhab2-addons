@@ -46,6 +46,7 @@ public class StiebelHeatPumpBindingConstants {
     public static final String CHANNEL_SETTIME = "time" + CHANNELGROUPSEPERATOR + "setTime";
     public static final String CHANNELID_TIME = "time";
     public static final String CHANNEL_DUMPRESPONSE = "version" + CHANNELGROUPSEPERATOR + "dumpResponse";
+    public static final String CHANNEL_LASTUPDATE = "version" + CHANNELGROUPSEPERATOR + "refreshTime";
 
     public static final String CHANNELTYPE_TIMESETTING = BINDING_ID + ":" + "timeSetting";
     public static final String CHANNELTYPE_SWITCHSETTING = BINDING_ID + ":" + "switchSetting";
