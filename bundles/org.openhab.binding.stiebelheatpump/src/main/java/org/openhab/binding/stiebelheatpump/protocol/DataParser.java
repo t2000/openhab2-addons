@@ -14,13 +14,10 @@ package org.openhab.binding.stiebelheatpump.protocol;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.openhab.binding.stiebelheatpump.internal.StiebelHeatPumpException;
-import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,9 +52,7 @@ public class DataParser {
     public static byte[] FOOTER = { ESCAPE, END };
     public static byte[] DATAAVAILABLE = { ESCAPE, STARTCOMMUNICATION };
 
-    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
-
-    public List<Request> parserConfiguration = new ArrayList<Request>();
+    protected static final char[] hexArray = "0123456789ABCDEF".toCharArray();
 
     public DataParser() {
     }
@@ -71,21 +66,21 @@ public class DataParser {
      *            request defined for heat pump response
      * @return Map of Strings with name and values
      */
-    public Map<String, String> parseRecords(final byte[] response, Request request) throws StiebelHeatPumpException {
+    public Map<String, Object> parseRecords(final byte[] response, Request request) throws StiebelHeatPumpException {
 
-        Map<String, String> map = new HashMap<String, String>();
-
-        logger.debug("Parse bytes: {}", DataParser.bytesToHex(response));
+        Map<String, Object> map = new HashMap<>();
+        String bytes = bytesToHex(response);
+        logger.debug("Parse bytes: {}", bytes);
 
         if (response.length < 2) {
-            logger.error("response does not have a valid length of bytes: {}", DataParser.bytesToHex(response));
+            logger.error("response does not have a valid length of bytes: {}", bytes);
             return map;
         }
 
         // parse response and fill map
         for (RecordDefinition recordDefinition : request.getRecordDefinitions()) {
             try {
-                String value = parseRecord(response, recordDefinition);
+                Object value = parseRecord(response, recordDefinition);
                 String channel = recordDefinition.getChannelid();
                 logger.debug("Parsed value {} -> {} with pos: {} , len: {}", channel, value,
                         recordDefinition.getPosition(), recordDefinition.getLength());
@@ -106,16 +101,18 @@ public class DataParser {
      * @return string value of the parse response
      * @throws StiebelHeatPumpException
      */
-    public String parseRecord(byte[] response, RecordDefinition recordDefinition) throws StiebelHeatPumpException {
+    public Object parseRecord(byte[] response, RecordDefinition recordDefinition) throws StiebelHeatPumpException {
+        String responseStr = bytesToHex(response);
         try {
             if (response.length < 2) {
-                logger.error("response does not have a valid length of bytes: {}", DataParser.bytesToHex(response));
+                logger.error("response does not have a valid length of bytes: {}", responseStr);
                 throw new StiebelHeatPumpException();
             }
-            ByteBuffer buffer = ByteBuffer.wrap(response);
             short number = 0;
+            ByteBuffer buffer = ByteBuffer.wrap(response);
             byte[] bytes = null;
 
+            // get number type of data depending on byte length
             switch (recordDefinition.getLength()) {
                 case 1:
                     bytes = new byte[1];
@@ -129,22 +126,24 @@ public class DataParser {
                     break;
             }
 
+            // get boolean type of data in case we have a defined bitposition
             if (recordDefinition.getBitPosition() > 0) {
-
-                int returnValue = getBit(bytes, recordDefinition.getBitPosition());
-                return String.valueOf(returnValue);
+                return getBit(bytes, recordDefinition.getBitPosition());
+            } else if (recordDefinition.getScale() == 1 && recordDefinition.getMin() == 0
+                    && recordDefinition.getMax() == 1 && recordDefinition.getStep() == 0) {
+                // full byte representing boolean
+                return (number != 0);
             }
 
+            // convert the number to double reflecting the scale
             if (recordDefinition.getScale() != 1.0) {
                 double myDoubleNumber = number * recordDefinition.getScale();
-                myDoubleNumber = Math.round(myDoubleNumber * 100.0) / 100.0;
-                String returnString = String.format("%s", myDoubleNumber);
-                return returnString;
+                return Math.round(myDoubleNumber * 100.0) / 100.0;
             }
 
-            return String.valueOf(number);
+            return number;
         } catch (Exception e) {
-            logger.error("response {} could not be parsed for record definition {} ", DataParser.bytesToHex(response),
+            logger.error("response {} could not be parsed for record definition {} ", responseStr,
                     recordDefinition.getChannelid());
             throw new StiebelHeatPumpException();
         }
@@ -164,48 +163,60 @@ public class DataParser {
      * @return byte[] ready to send to heat pump
      * @throws StiebelHeatPumpException
      */
-    public byte[] composeRecord(String value, byte[] response, RecordDefinition recordDefinition)
-            throws StiebelHeatPumpException {
-
-        if (recordDefinition.getDataType() != Type.Settings) {
-            logger.warn("The record {} can not be set as it is not a setable value!", recordDefinition.getChannelid());
-            throw new StiebelHeatPumpException("record is not a setting!");
-        }
-        double number = Double.parseDouble(value);
-        if (number > recordDefinition.getMax() || number < recordDefinition.getMin()) {
-            logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
-                    recordDefinition.getChannelid(), value, recordDefinition.getMax(), recordDefinition.getMin());
-            throw new StiebelHeatPumpException("invalid value !");
-        }
+    public byte[] composeRecord(Object currentValue, Object newValue, byte[] response,
+            RecordDefinition recordDefinition) throws StiebelHeatPumpException {
 
         // change response byte to setting command
         response[1] = SET;
-        short newValue = (short) number;
-
-        // reverse the scale
-        if (recordDefinition.getScale() != 1.0) {
-            number = number / recordDefinition.getScale();
-            newValue = (short) number;
+        if (currentValue instanceof Boolean) {
+            Boolean currentValueBoolean = (Boolean) currentValue;
+            Boolean newValueBoolean = (Boolean) newValue;
+            if (currentValueBoolean.equals(newValueBoolean)) {
+                return response;
+            }
+            // set new bit values in a byte, this a valid for switch setting change
+            if (recordDefinition.getBitPosition() > 0) {
+                // check will old implementation
+                byte[] abyte = new byte[] { response[recordDefinition.getPosition()] };
+                response[recordDefinition.getPosition()] = setBit(abyte, recordDefinition.getBitPosition(),
+                        newValueBoolean)[0];
+                return response;
+            }
         }
 
-        // set new bit values in a byte
-        if (recordDefinition.getBitPosition() > 0) {
-            // check will old implementation
-            byte[] abyte = new byte[] { response[recordDefinition.getPosition()] };
-            abyte = setBit(abyte, recordDefinition.getBitPosition(), newValue);
-            response[recordDefinition.getPosition()] = abyte[0];
-            return response;
+        Short newValueShort = 0;
+
+        if (currentValue instanceof Short) {
+            Short currentValueShort = (Short) currentValue;
+            newValueShort = (Short) newValue;
+            if (newValueShort > recordDefinition.getMax() || newValueShort < recordDefinition.getMin()) {
+                logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
+                        recordDefinition.getChannelid(), newValue, recordDefinition.getMax(),
+                        recordDefinition.getMin());
+                throw new StiebelHeatPumpException("invalid value !");
+            }
+        }
+        if (currentValue instanceof Double) {
+            Double currentValueDouble = (Double) currentValue;
+            Double newValueDouble = (Double) newValue;
+            if (newValueDouble > recordDefinition.getMax() || newValueDouble < recordDefinition.getMin()) {
+                logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
+                        recordDefinition.getChannelid(), newValue, recordDefinition.getMax(),
+                        recordDefinition.getMin());
+                throw new StiebelHeatPumpException("invalid value !");
+            }
+            newValueShort = (short) (newValueDouble / recordDefinition.getScale());
         }
 
-        // create byte values for single and double byte values
+        // create byte values for single / double byte values
         // and update response
         switch (recordDefinition.getLength()) {
             case 1:
-                byte newByteValue = (byte) number;
+                byte newByteValue = shortToByte(newValueShort)[0];
                 response[recordDefinition.getPosition()] = newByteValue;
                 break;
             case 2:
-                byte[] newByteValues = shortToByte(newValue);
+                byte[] newByteValues = shortToByte(newValueShort);
                 int position = recordDefinition.getPosition();
                 response[position] = newByteValues[1];
                 response[position + 1] = newByteValues[0];
@@ -213,9 +224,9 @@ public class DataParser {
         }
 
         response[2] = this.calculateChecksum(response);
-        response = this.addDuplicatedBytes(response);
+        this.addDuplicatedBytes(response);
         logger.debug("Updated record {} at position {} to value {}.", recordDefinition.getChannelid(),
-                recordDefinition.getPosition(), value);
+                recordDefinition.getPosition(), newValue);
         return response;
     }
 
@@ -281,7 +292,7 @@ public class DataParser {
         try {
             verifyHeader(response);
         } catch (StiebelHeatPumpException e) {
-            logger.debug("verification of response failed " + e.toString());
+            logger.debug("verification of response failed : {}", e.toString());
             return false;
         }
 
@@ -351,8 +362,7 @@ public class DataParser {
      * @return array of bytes
      */
     public byte[] intToByte(int checkSum) {
-        byte[] returnByteArray = ByteBuffer.allocate(4).putInt(checkSum).array();
-        return returnByteArray;
+        return ByteBuffer.allocate(4).putInt(checkSum).array();
     }
 
     /**
@@ -524,12 +534,15 @@ public class DataParser {
      *            to get the bit value
      * @return integer value 1 or 0 that represents the bit
      */
-    private int getBit(byte[] data, int pos) {
+    private boolean getBit(byte[] data, int pos) {
         int posByte = pos / 8;
         int posBit = pos % 8;
         byte valByte = data[posByte];
-        int valInt = valByte >> (8 - (posBit + 1)) & 0x0001;
-        return valInt;
+        if ((valByte >> (8 - (posBit + 1)) & 0x0001) >= 1) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -543,12 +556,13 @@ public class DataParser {
      * @param value
      *            to set the bit to (0 or 1)
      */
-    private byte[] setBit(byte[] data, int position, int value) {
+    private byte[] setBit(byte[] data, int position, boolean value) {
         int posByte = position / 8;
         int posBit = position % 8;
+        int newInt = value ? 1 : 0;
         byte oldByte = data[posByte];
         oldByte = (byte) (((0xFF7F >> posBit) & oldByte) & 0x00FF);
-        byte newByte = (byte) ((value << (8 - (posBit + 1))) | oldByte);
+        byte newByte = (byte) ((newInt << (8 - (posBit + 1))) | oldByte);
         data[posByte] = newByte;
         return data;
     }

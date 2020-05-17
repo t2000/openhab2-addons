@@ -15,7 +15,6 @@ package org.openhab.binding.stiebelheatpump.internal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import javax.xml.bind.DatatypeConverter;
 
@@ -76,13 +75,10 @@ public class CommunicationService {
      * @return version string, e.g: 2.06
      */
     public String getVersion(Request versionRequest) throws StiebelHeatPumpException {
-        String version = "";
         logger.debug("Loading version info ...");
-        Map<String, String> data = readData(versionRequest);
+        Map<String, Object> data = readData(versionRequest);
         String versionKey = StiebelHeatPumpBindingConstants.CHANNELID_VERSION;
-        version = data.get(versionKey);
-
-        return version;
+        return data.get(versionKey).toString();
     }
 
     /**
@@ -91,13 +87,12 @@ public class CommunicationService {
      *
      * @return map of heat pump setting values
      */
-    public Map<String, String> getRequestData(List<Request> requests) throws StiebelHeatPumpException {
-        Map<String, String> data = new HashMap<>();
+    public Map<String, Object> getRequestData(List<Request> requests) throws StiebelHeatPumpException {
+        Map<String, Object> data = new HashMap<>();
         for (Request request : requests) {
             logger.debug("Loading data for request {} ...", request.getName());
             try {
-                Map<String, String> newData = readData(request);
-                data.putAll(newData);
+                data.putAll(readData(request));
                 if (requests.size() > 1) {
                     Thread.sleep(waitingTime);
                 }
@@ -113,16 +108,15 @@ public class CommunicationService {
      *
      * @return true if time has been updated
      */
-    public Map<String, String> setTime(Request timeRequest) throws StiebelHeatPumpException {
+    public Map<String, Object> setTime(Request timeRequest) throws StiebelHeatPumpException {
 
         startCommunication();
-        Map<String, String> data = new HashMap<>();
+        Map<String, Object> data = new HashMap<>();
 
         if (timeRequest == null) {
             logger.warn("Could not find request definition for time settings! Skip setting time.");
             return data;
         }
-
         try {
             // get time from heat pump
             logger.debug("Loading current time data ...");
@@ -145,41 +139,41 @@ public class CommunicationService {
 
             for (RecordDefinition record : timeRequest.getRecordDefinitions()) {
                 String channelid = record.getChannelid();
-                String value = data.get(channelid);
+                Object value = data.get(channelid);
 
                 if (channelid.equalsIgnoreCase("weekday") && !value.equals(weekday)) {
                     updateRequired = true;
-                    response = parser.composeRecord(weekday, response, record);
+                    response = parser.composeRecord(value, weekday, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("hours") && !channelid.equals(hours)) {
                     updateRequired = true;
-                    response = parser.composeRecord(hours, response, record);
+                    response = parser.composeRecord(value, hours, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("minutes") && !value.equals(minutes)) {
                     updateRequired = true;
-                    response = parser.composeRecord(minutes, response, record);
+                    response = parser.composeRecord(value, minutes, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("seconds") && !value.equals(seconds)) {
                     updateRequired = true;
-                    response = parser.composeRecord(seconds, response, record);
+                    response = parser.composeRecord(value, seconds, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("year") && !value.equals(year)) {
                     updateRequired = true;
-                    response = parser.composeRecord(year, response, record);
+                    response = parser.composeRecord(value, year, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("month") && !value.equals(month)) {
                     updateRequired = true;
-                    response = parser.composeRecord(month, response, record);
+                    response = parser.composeRecord(value, month, response, record);
                     continue;
                 }
                 if (channelid.equalsIgnoreCase("day") && !value.equals(day)) {
                     updateRequired = true;
-                    response = parser.composeRecord(day, response, record);
+                    response = parser.composeRecord(value, day, response, record);
                 }
             }
 
@@ -187,15 +181,13 @@ public class CommunicationService {
                 Thread.sleep(waitingTime);
                 logger.info("Time need update. Set time to {}", dt);
                 setData(response);
-
                 Thread.sleep(waitingTime);
                 response = getData(requestMessage);
                 data = parser.parseRecords(response, timeRequest);
 
-                for (Map.Entry<String, String> entry : data.entrySet()) {
-                    logger.info("Key = " + entry.getKey() + ", Value = " + entry.getValue());
+                for (Map.Entry<String, Object> entry : data.entrySet()) {
+                    logger.info("Key = {} , Value =  {}", entry.getKey(), entry.getValue());
                 }
-
             }
             return data;
 
@@ -211,22 +203,19 @@ public class CommunicationService {
      *            definition to load the values from
      * @return map of heat pump values according request definition
      */
-    public Map<String, String> readData(Request request) throws StiebelHeatPumpException {
-        Map<String, String> data = new HashMap<String, String>();
+    public Map<String, Object> readData(Request request) throws StiebelHeatPumpException {
+        Map<String, Object> data = new HashMap<>();
         logger.debug("Request : Name -> {}, Description -> {} , RequestByte -> {}", request.getName(),
                 request.getDescription(), DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() }));
         byte responseAvailable[] = new byte[0];
         byte requestMessage[] = createRequestMessage(request);
-        boolean validData = false;
         try {
             while (true) {
                 startCommunication();
                 responseAvailable = getData(requestMessage);
                 responseAvailable = parser.fixDuplicatedBytes(responseAvailable);
-                validData = parser.headerCheck(responseAvailable);
-                if (validData) {
-                    data = parser.parseRecords(responseAvailable, request);
-                    break;
+                if (parser.headerCheck(responseAvailable)) {
+                    return parser.parseRecords(responseAvailable, request);
                 }
             }
         } catch (StiebelHeatPumpException e) {
@@ -243,48 +232,9 @@ public class CommunicationService {
      * @param parameter
      *            to be update in the heat pump
      */
-    public Map<String, String> setData(String value, String parameter, List<Request> heatPumpSettingConfiguration)
-            throws StiebelHeatPumpException {
-        Request updateRequest = null;
-        RecordDefinition updateRecord = null;
-        Map<String, String> data = new HashMap<>();
-
-        if (parameter == null) {
-            logger.debug("update parameter is NULL");
-            return data;
-        }
-
-        String[] parts = parameter.split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
-        if (parts.length != 2) {
-            logger.debug("Channel {} to unlink has invalid structure channelgroup#channel", parameter);
-        }
-        String channelId = parts[parts.length - 1];
-
-        // we lookup the right request definition that contains the parameter to
-        // be updated
-        for (Request request : heatPumpSettingConfiguration) {
-            for (RecordDefinition record : request.getRecordDefinitions()) {
-                if (record.getChannelid().equalsIgnoreCase(channelId)) {
-                    updateRecord = record;
-                    updateRequest = request;
-                    logger.debug("Found valid record definition {} in request {}:{}", record.getChannelid(),
-                            request.getName(), request.getDescription());
-                    break;
-                }
-            }
-        }
-
-        if (updateRecord == null || updateRequest == null) {
-            // did not find any valid record, do nothing
-            logger.warn("Could not find valid record definition for {},  please verify thing definition.", parameter);
-            return data;
-        }
-
-        if (Integer.parseInt(value) > updateRecord.getMax() || Integer.parseInt(value) < updateRecord.getMin()) {
-            logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
-                    updateRecord.getChannelid(), value, updateRecord.getMax(), updateRecord.getMin());
-            return data;
-        }
+    public Map<String, Object> writeData(Object newValue, String channelId, Request updateRequest,
+            RecordDefinition updateRecord) throws StiebelHeatPumpException {
+        Map<String, Object> data = new HashMap<>();
 
         try {
             // get actual value for the corresponding request, in case settings have changed locally
@@ -295,20 +245,19 @@ public class CommunicationService {
             byte[] requestMessage = createRequestMessage(updateRequest);
             byte[] response = getData(requestMessage);
             response = parser.fixDuplicatedBytes(response);
-
             data = parser.parseRecords(response, updateRequest);
 
             // lookup parameter value in the data
-            String currentState = data.get(channelId);
-            if (currentState.equals(value)) {
-                // current State is already same as new values!
-                logger.debug("Current State for {} is already {}.", parameter, value);
+            Object currentValue = data.get(channelId);
+
+            // create new set request created from the existing read response
+            byte[] requestUpdateMessage = parser.composeRecord(currentValue, newValue, response, updateRecord);
+            if (requestMessage.equals(response)) {
+                logger.debug("Current value for {} is already {}.", channelId, newValue);
                 return data;
             }
 
-            // create new set request out from the existing read response
-            byte[] requestUpdateMessage = parser.composeRecord(value, response, updateRecord);
-            logger.debug("Setting new value [{}] for parameter [{}]", value, parameter);
+            logger.debug("Setting new value [{}] for parameter [{}]", newValue, channelId);
 
             Thread.sleep(waitingTime);
 
@@ -316,15 +265,14 @@ public class CommunicationService {
             response = parser.fixDuplicatedBytes(response);
 
             if (parser.setDataCheck(response)) {
-                logger.debug("Updated parameter {} successfully.", parameter);
+                logger.debug("Updated parameter {} successfully.", channelId);
             } else {
-                logger.debug("Update for parameter {} failed!", parameter);
+                logger.debug("Update for parameter {} failed!", channelId);
             }
 
         } catch (StiebelHeatPumpException e) {
-            logger.error("Stiebel heat pump communication error during update of value ! {} ", e);
+            logger.error("Stiebel heat pump communication error during update of value !");
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         return data;
@@ -339,14 +287,15 @@ public class CommunicationService {
     public void dumpResponse(byte requestByte) {
         int tmp = MAXRETRIES;
         MAXRETRIES = 1;
-        logger.info(String.format("Prepare response for request byte %02X", requestByte));
+        String requestStr = String.format("%02X", requestByte);
+        logger.info("Prepare response for request byte {}", requestStr);
         Request request = new Request();
         request.setRequestByte(requestByte);
 
         byte requestMessage[] = createRequestMessage(request);
 
         if (!establishRequest(requestMessage)) {
-            logger.info(String.format("Could not get response for request byte %02X", requestByte));
+            logger.info("Could not get response for request byte {}", requestStr);
             return;
         }
         MAXRETRIES = tmp;
@@ -354,18 +303,16 @@ public class CommunicationService {
             connector.write(DataParser.ESCAPE);
             byte[] response = receiveData();
             response = parser.fixDuplicatedBytes(response);
-            logger.info("Request {} received response : {}", DataParser.bytesToHex(response),
-                    DataParser.bytesToHex(response));
+            String respondStr = DataParser.bytesToHex(response);
+            logger.info("Request {} received response : {}", requestStr, respondStr);
 
             boolean validData = parser.headerCheck(response);
             if (validData) {
                 parser.parseRecords(response, request);
             }
-            return;
         } catch (Exception e) {
             logger.error(String.format("Could not get data from heat pump! for request %02X", requestByte));
         }
-        return;
     }
 
     /**
@@ -407,8 +354,7 @@ public class CommunicationService {
         }
         try {
             connector.write(DataParser.ESCAPE);
-            byte[] response = receiveData();
-            return response;
+            return receiveData();
         } catch (Exception e) {
             logger.error("Could not get data from heat pump! {}", e.toString());
             return buffer;
@@ -522,7 +468,6 @@ public class CommunicationService {
                 startCommunication();
             }
             if (!dataAvailable) {
-
                 logger.warn("heat pump has no data available for request!");
                 return false;
             }

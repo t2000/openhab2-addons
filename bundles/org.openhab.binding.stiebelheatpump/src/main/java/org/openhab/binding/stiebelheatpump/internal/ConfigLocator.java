@@ -13,7 +13,9 @@
 package org.openhab.binding.stiebelheatpump.internal;
 
 import java.net.URL;
+import java.util.List;
 
+import org.openhab.binding.stiebelheatpump.protocol.Request;
 import org.openhab.binding.stiebelheatpump.protocol.Requests;
 import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
@@ -73,9 +75,9 @@ public class ConfigLocator {
      *
      * @return All request of the configuration
      */
-    public Requests getRequests() {
+    public List<Request> getRequests() {
 
-        return requests;
+        return requests.getRequests();
     }
 
     /**
@@ -83,8 +85,8 @@ public class ConfigLocator {
      *
      * @return All records of the configuration
      */
-    public Records getRecords() {
+    public List<Record> getRecords() {
 
-        return records;
+        return records.getRecords();
     }
 }

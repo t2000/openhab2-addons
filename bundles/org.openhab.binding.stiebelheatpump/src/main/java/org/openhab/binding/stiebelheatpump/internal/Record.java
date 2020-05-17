@@ -52,10 +52,10 @@ public class Record {
     private int bitPosition;
 
     @XStreamAsAttribute
-    private int min;
+    private double min;
 
     @XStreamAsAttribute
-    private int max;
+    private double max;
 
     @XStreamAsAttribute
     private double step;
@@ -114,7 +114,7 @@ public class Record {
         this.dataType = dataType;
     }
 
-    public int getMin() {
+    public double getMin() {
         return min;
     }
 
@@ -122,7 +122,7 @@ public class Record {
         this.min = min;
     }
 
-    public int getMax() {
+    public double getMax() {
         return max;
     }
 

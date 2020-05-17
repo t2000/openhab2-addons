@@ -44,9 +44,9 @@
 		<state pattern="%d h" readOnly="true" />
 	</channel-type>
 	<channel-type id="temperatureSetting" advanced="true">
-		<item-type>Number</item-type>
+		<item-type>Number:Temperature</item-type>
 		<label>Temperature Setting in [°C]</label>
-		<state min="10" max="30" step="0.1" pattern="%.1f °C" />
+		<state min="10" max="30" step="0.1" pattern="%.1f %unit%" />
 	</channel-type>
 	<channel-type id="dHWTemperatureSetting" advanced="true">
 		<item-type>Number:Temperature</item-type>

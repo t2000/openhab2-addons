@@ -10,6 +10,10 @@ package org.openhab.binding.stiebelheatpump.internal;
 
 import static org.openhab.binding.stiebelheatpump.internal.StiebelHeatPumpBindingConstants.*;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,10 +93,32 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
 
     @Override
     public void handleCommand(ChannelUID channelUID, Command command) {
-        logger.debug("Received command {} for channelUID {}", command, channelUID);
-
         if (command instanceof RefreshType) {
             // refresh is handled with scheduled polling of data
+            return;
+        }
+
+        logger.debug("Received command {} for channelUID {}", command, channelUID);
+
+        // extract channelId
+        String[] parts = channelUID.getId().split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
+        if (parts.length != 2) {
+            logger.debug("Channel {} to unlink has invalid structure channelgroup#channel", channelUID.getId());
+        }
+        String channelId = parts[parts.length - 1];
+        // do checks if valid definition is available
+        Request updateRequest = getRequestChannelId(channelId);
+        if (updateRequest == null) {
+            logger.warn("Could not find valid requst definition for {},  please verify thing definition.", channelId);
+            return;
+        }
+        RecordDefinition updateRecord = getRecordDefinitionByChannelId(updateRequest, channelId);
+        if (updateRecord == null) {
+            logger.warn("Could not find valid record definition for {},  please verify thing definition.", channelId);
+            return;
+        }
+        if (updateRecord.getDataType() != Type.Settings) {
+            logger.warn("The record {} can not be set as it is not a setable value!", updateRecord.getChannelid());
             return;
         }
 
@@ -113,8 +139,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         communicationInUse = true;
         communicationService.connect();
         try {
-            Map<String, String> data = new HashMap<>();
-
+            Map<String, Object> data = new HashMap<>();
             switch (channelUID.getId()) {
                 case CHANNEL_SETTIME:
                     data = communicationService.setTime(timeRequest);
@@ -128,22 +153,37 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                     updateState(channelUID, OnOffType.OFF);
                     break;
                 default:
-                    String value = command.toString();
+                    Object value;
                     if (command instanceof OnOffType) {
                         // the command come from a switch type , we need to map ON and OFF to 0 and 1 values
-                        if (command.equals(OnOffType.ON)) {
-                            value = "1";
-                        }
+                        value = true;
                         if (command.equals(OnOffType.OFF)) {
-                            value = "0";
+                            value = false;
+                        }
+                        data = communicationService.writeData(value, channelId, updateRequest, updateRecord);
+                    }
+                    if (command instanceof QuantityType) {
+                        QuantityType<?> newQtty = ((QuantityType<?>) command);
+                        value = newQtty.doubleValue();
+                        data = communicationService.writeData(value, channelId, updateRequest, updateRecord);
+                    }
+                    if (command instanceof DecimalType) {
+                        value = ((DecimalType) command).doubleValue();
+                        data = communicationService.writeData(value, channelId, updateRequest, updateRecord);
+                    }
+                    if (command instanceof StringType) {
+                        DateTimeFormatter strictTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+                                .withResolverStyle(ResolverStyle.STRICT);
+                        try {
+                            LocalTime time = LocalTime.parse(command.toString(), strictTimeFormatter);
+                            value = (short) (time.getHour() * 100 + time.getMinute());
+                            data = communicationService.writeData(value, channelId, updateRequest, updateRecord);
+                        } catch (DateTimeParseException e) {
+                            logger.info("Time string is not valid ! : {}", e.getMessage());
                         }
                     }
-                    communicationService.setData(value, channelUID.getId(), heatPumpRefresh);
-                    break;
             }
-
             updateCannels(data);
-
         } catch (Exception e) {
             logger.debug("Exception occurred during execution: {}", e.getMessage(), e);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.OFFLINE.COMMUNICATION_ERROR, e.getMessage());
@@ -332,7 +372,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             communicationInUse = true;
             try {
                 communicationService.connect();
-                Map<String, String> data = communicationService.getRequestData(heatPumpRefresh);
+                Map<String, Object> data = communicationService.getRequestData(heatPumpRefresh);
                 updateCannels(data);
                 LocalDateTime dt = DateTime.now().toLocalDateTime();
                 updateState(CHANNEL_LASTUPDATE, new StringType(dt.toString(DATE_PATTERN_WITH_TZ)));
@@ -358,7 +398,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             communicationInUse = true;
             try {
                 communicationService.connect();
-                Map<String, String> time = communicationService.setTime(timeRequest);
+                Map<String, Object> time = communicationService.setTime(timeRequest);
                 updateCannels(time);
             } catch (StiebelHeatPumpException e) {
                 logger.debug(e.getMessage());
@@ -384,7 +424,7 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
             // get the records from the thing-type configuration file
             String configFile = thingType.getUID().getId();
             ConfigLocator configLocator = new ConfigLocator(configFile + ".xml");
-            heatPumpConfiguration = configLocator.getRequests().getRequests();
+            heatPumpConfiguration = configLocator.getRequests();
         }
 
         categorizeHeatPumpConfiguration();
@@ -421,30 +461,33 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
      * @param data
      *            Map<String, String> of data coming from heat pump
      */
-    private void updateCannels(Map<String, String> data) {
-        if (data.isEmpty()) {
-            return;
-        }
-
-        for (Map.Entry<String, String> entry : data.entrySet()) {
+    private void updateCannels(Map<String, Object> data) {
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
             logger.debug("Data {} has value {}", entry.getKey(), entry.getValue());
-            String channelId = entry.getKey().toString();
-
+            String channelId = entry.getKey();
             for (Channel ch : getThing().getChannels()) {
                 ChannelUID channelUID = ch.getUID();
-                if (ch.getUID().toString().endsWith(channelId)) {
+                String[] parts = channelUID.getId()
+                        .split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
+                if (parts[parts.length - 1].equals(channelId)) {
                     ChannelTypeUID channelTypeUID = ch.getChannelTypeUID();
                     String channelType = channelTypeUID.toString();
 
                     if (channelType.equalsIgnoreCase(CHANNELTYPE_TIMESETTING)) {
-                        updateTimeChannel(entry.getValue(), channelUID);
+                        updateTimeChannel(entry.getValue().toString(), channelUID);
                         continue;
                     }
                     if (channelType.equalsIgnoreCase(CHANNELTYPE_SWITCHSETTING)) {
-                        updateSwitchSettingChannel(entry.getValue(), channelUID);
+                        updateSwitchSettingChannel((boolean) entry.getValue(), channelUID);
                         continue;
                     }
-                    updateStatus(entry.getValue(), ch, channelUID);
+                    if (entry.getValue() instanceof Number) {
+                        updateStatus((Number) entry.getValue(), ch, channelUID);
+                        continue;
+                    }
+                    if (entry.getValue() instanceof Boolean) {
+                        updateSwitchSettingChannel((boolean) entry.getValue(), channelUID);
+                    }
                 }
             }
         }
@@ -452,35 +495,38 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         updateStatus(ThingStatus.ONLINE);
     }
 
-    private String updateStatus(String value, Channel ch, ChannelUID channelUID) {
+    private void updateStatus(Number value, Channel ch, ChannelUID channelUID) {
         String itemType = ch.getAcceptedItemType();
 
-        switch (itemType) {
-            case "Number:Temperature":
-                QuantityType<Temperature> temperature = new QuantityType<>(Double.valueOf(value), SIUnits.CELSIUS);
-                updateState(channelUID, temperature);
-                break;
-            case "Number:Energy":
-                // TODO: how to make this kW as these are coming from heatpump
-                QuantityType<Power> energy = new QuantityType<>(Double.valueOf(value), SmartHomeUnits.WATT);
-                updateState(channelUID, energy);
-                break;
-            case "Number:Dimensionless:Percent":
-                QuantityType<Dimensionless> percent = new QuantityType<>(Double.valueOf(value), SmartHomeUnits.PERCENT);
-                updateState(channelUID, percent);
-                break;
+        if (value instanceof Double) {
+            switch (itemType) {
+                case "Number:Temperature":
+                    QuantityType<Temperature> temperature = new QuantityType<>(value, SIUnits.CELSIUS);
+                    updateState(channelUID, temperature);
+                    break;
+                case "Number:Energy":
+                    // TODO: how to make this kW as these are coming from heatpump
+                    QuantityType<Power> energy = new QuantityType<>(value, SmartHomeUnits.WATT);
+                    updateState(channelUID, energy);
+                    break;
+                case "Number:Dimensionless:Percent":
+                    QuantityType<Dimensionless> percent = new QuantityType<>(value, SmartHomeUnits.PERCENT);
+                    updateState(channelUID, percent);
+                    break;
 
-            default:
-                updateState(channelUID, new DecimalType(value));
+                default:
+                    updateState(channelUID, new DecimalType((Double) value));
+            }
+            return;
         }
-        return itemType;
+        updateState(channelUID, new DecimalType((short) value));
     }
 
-    private void updateSwitchSettingChannel(String setting, ChannelUID channelUID) {
-        if ("0".equals(setting)) {
-            updateState(channelUID, OnOffType.OFF);
-        } else {
+    private void updateSwitchSettingChannel(Boolean setting, ChannelUID channelUID) {
+        if (setting) {
             updateState(channelUID, OnOffType.ON);
+        } else {
+            updateState(channelUID, OnOffType.OFF);
         }
     }
 
@@ -539,14 +585,17 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
     private void updateRefreshRequests() {
         for (Channel channel : getThing().getChannels()) {
             if (this.isLinked(channel.getUID())) {
+                ChannelUID channelUID = channel.getUID();
+                String[] parts = channelUID.getId()
+                        .split(Pattern.quote(StiebelHeatPumpBindingConstants.CHANNELGROUPSEPERATOR));
+                String channelId = parts[parts.length - 1];
                 for (Request request : heatPumpConfiguration) {
                     for (RecordDefinition record : request.getRecordDefinitions()) {
-                        if (channel.getUID().toString().endsWith(record.getChannelid())
-                                && !heatPumpRefresh.contains(request)) {
+                        if (channelId.equals(record.getChannelid()) && !heatPumpRefresh.contains(request)) {
                             heatPumpRefresh.add(request);
                             // there is still a channel link in the thing which will require updates
-                            logger.info(String.format("Request %02X added to refresh scheduler.",
-                                    request.getRequestByte()));
+                            String requestbyte = String.format("%02X", request.getRequestByte());
+                            logger.info("Request {} added to refresh scheduler.", requestbyte);
                             break;
                         }
                     }
@@ -555,4 +604,29 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
         }
     }
 
+    private Request getRequestChannelId(String channelId) {
+        // we lookup the right request definition that contains the parameter to
+        // be updated
+        for (Request request : heatPumpSettingConfiguration) {
+            for (RecordDefinition record : request.getRecordDefinitions()) {
+                if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                    return request;
+                }
+            }
+        }
+        return null;
+    }
+
+    private RecordDefinition getRecordDefinitionByChannelId(Request request, String channelId) {
+        // we lookup the right request definition that contains the parameter to
+        // be updated
+        for (RecordDefinition record : request.getRecordDefinitions()) {
+            if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                logger.debug("Found valid record definition {} in request {}:{}", record.getChannelid(),
+                        request.getName(), request.getDescription());
+                return record;
+            }
+        }
+        return null;
+    }
 }

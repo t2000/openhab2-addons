@@ -40,9 +40,9 @@ public class RecordDefinition {
 
     private int bitPosition;
 
-    private int min;
+    private double min;
 
-    private int max;
+    private double max;
 
     private double step;
 
@@ -202,19 +202,19 @@ public class RecordDefinition {
         this.dataType = dataType;
     }
 
-    public int getMin() {
+    public double getMin() {
         return min;
     }
 
-    public void setMin(int min) {
+    public void setMin(double min) {
         this.min = min;
     }
 
-    public int getMax() {
+    public double getMax() {
         return max;
     }
 
-    public void setMax(int max) {
+    public void setMax(double max) {
         this.max = max;
     }
 
