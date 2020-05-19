@@ -11,13 +11,14 @@
 			<!-- at least 1 channel-group with id = version must be included -->
 			<channel id="version" typeId="version" />
 			<channel id="dumpResponse" typeId="dumpResponse" />
-			<channel id="refreshTime" typeId="refreshDateTime" />	
+			<channel id="refreshTime" typeId="dateTime" />	
 		</channels>
 	</channel-group-type>
 	<channel-group-type id="channelGroupTypeTime" advanced="true">
 		<label>Time</label>
 		<description>Date and time information of heat pump</description>
 		<channels>
+            <channel id="currentTime" typeId="dateTime" />  			
 			<channel id="setTime" typeId="setTime" />
 			<channel id="weekday" typeId="weekday" />
 			<channel id="hours" typeId="hours" />

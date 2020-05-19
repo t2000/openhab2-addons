@@ -15,7 +15,7 @@
 		<label>Dump heat pump response </label>
 		<description>Takes standard request bytes and asks for a heat pump response, which is logged in the log.</description>
 	</channel-type>
-    <channel-type id="refreshDateTime">
+    <channel-type id="dateTime">
         <item-type>String</item-type>
         <label>Last refresh</label>
         <description>Heatpump refreshed date time</description>

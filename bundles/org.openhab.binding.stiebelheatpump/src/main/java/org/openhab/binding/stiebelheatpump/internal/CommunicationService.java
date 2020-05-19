@@ -12,15 +12,15 @@
  */
 package org.openhab.binding.stiebelheatpump.internal;
 
+import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.xml.bind.DatatypeConverter;
-
 import org.eclipse.smarthome.io.transport.serial.SerialPortManager;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
 import org.openhab.binding.stiebelheatpump.protocol.DataParser;
 import org.openhab.binding.stiebelheatpump.protocol.ProtocolConnector;
 import org.openhab.binding.stiebelheatpump.protocol.RecordDefinition;
@@ -34,9 +34,9 @@ public class CommunicationService {
     private Logger logger = LoggerFactory.getLogger(CommunicationService.class);
 
     private ProtocolConnector connector;
-    private static int MAXRETRIES = 5;
-    private static int INPUT_BUFFER_LENGTH = 1024;
-    private byte buffer[] = new byte[INPUT_BUFFER_LENGTH];
+    private int maxRetry = 5;
+    private static int inputBufferLength = 1024;
+    private byte[] buffer = new byte[inputBufferLength];
 
     DataParser parser = new DataParser();
 
@@ -120,74 +120,61 @@ public class CommunicationService {
         try {
             // get time from heat pump
             logger.debug("Loading current time data ...");
-            byte[] requestMessage = createRequestMessage(timeRequest);
+            byte[] requestMessage = createRequestMessage(timeRequest.getRequestByte());
             byte[] response = getData(requestMessage);
             data = parser.parseRecords(response, timeRequest);
 
             // get current time from local machine
-            LocalDateTime dt = DateTime.now().toLocalDateTime();
-            logger.debug("Current time is : {}", dt.toString());
-            String weekday = Integer.toString(dt.getDayOfWeek());
-            String day = Integer.toString(dt.getDayOfMonth());
-            String month = Integer.toString(dt.getMonthOfYear());
-            String year = Integer.toString(dt.getYearOfCentury());
-            String seconds = Integer.toString(dt.getSecondOfMinute());
-            String hours = Integer.toString(dt.getHourOfDay());
-            String minutes = Integer.toString(dt.getMinuteOfHour());
-
-            boolean updateRequired = false;
+            LocalDateTime dt = LocalDateTime.now();
+            logger.debug("Current time is : {}", dt);
+            short weekday = (short) dt.getDayOfWeek().getValue();
+            short day = (short) dt.getDayOfMonth();
+            short month = (short) dt.getMonthValue();
+            short year = Short.parseShort(Year.now().format(DateTimeFormatter.ofPattern("uu")));
+            short seconds = (short) dt.getSecond();
+            short hours = (short) dt.getHour();
+            short minutes = (short) dt.getMinute();
 
             for (RecordDefinition record : timeRequest.getRecordDefinitions()) {
                 String channelid = record.getChannelid();
                 Object value = data.get(channelid);
 
-                if (channelid.equalsIgnoreCase("weekday") && !value.equals(weekday)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, weekday, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("hours") && !channelid.equals(hours)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, hours, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("minutes") && !value.equals(minutes)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, minutes, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("seconds") && !value.equals(seconds)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, seconds, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("year") && !value.equals(year)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, year, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("month") && !value.equals(month)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, month, response, record);
-                    continue;
-                }
-                if (channelid.equalsIgnoreCase("day") && !value.equals(day)) {
-                    updateRequired = true;
-                    response = parser.composeRecord(value, day, response, record);
+                switch (channelid) {
+                    case "weekday":
+                        response = parser.composeRecord(value, weekday, response, record);
+                        break;
+                    case "hours":
+                        response = parser.composeRecord(value, hours, response, record);
+                        break;
+                    case "minutes":
+                        response = parser.composeRecord(value, minutes, response, record);
+                        break;
+                    case "seconds":
+                        response = parser.composeRecord(value, seconds, response, record);
+                        break;
+                    case "year":
+                        response = parser.composeRecord(value, year, response, record);
+                        break;
+                    case "month":
+                        response = parser.composeRecord(value, month, response, record);
+                        break;
+                    case "day":
+                        response = parser.composeRecord(value, day, response, record);
+                        break;
+                    default:
+                        break;
                 }
             }
 
-            if (updateRequired) {
-                Thread.sleep(waitingTime);
-                logger.info("Time need update. Set time to {}", dt);
-                setData(response);
-                Thread.sleep(waitingTime);
-                response = getData(requestMessage);
-                data = parser.parseRecords(response, timeRequest);
-
-                for (Map.Entry<String, Object> entry : data.entrySet()) {
-                    logger.info("Key = {} , Value =  {}", entry.getKey(), entry.getValue());
-                }
+            Thread.sleep(waitingTime);
+            logger.info("Time need update. Set time to {}", dt);
+            setData(response);
+            Thread.sleep(waitingTime);
+            response = getData(requestMessage);
+            data = parser.parseRecords(response, timeRequest);
+            data.put(StiebelHeatPumpBindingConstants.CHANNELID_CURRENTTIME, dt.toString());
+            for (Map.Entry<String, Object> entry : data.entrySet()) {
+                logger.info("Key = {} , Value =  {}", entry.getKey(), entry.getValue());
             }
             return data;
 
@@ -205,10 +192,11 @@ public class CommunicationService {
      */
     public Map<String, Object> readData(Request request) throws StiebelHeatPumpException {
         Map<String, Object> data = new HashMap<>();
+        String requestStr = String.format("%02X", request.getRequestByte());
         logger.debug("Request : Name -> {}, Description -> {} , RequestByte -> {}", request.getName(),
-                request.getDescription(), DatatypeConverter.printHexBinary(new byte[] { request.getRequestByte() }));
+                request.getDescription(), requestStr);
         byte responseAvailable[] = new byte[0];
-        byte requestMessage[] = createRequestMessage(request);
+        byte requestMessage[] = createRequestMessage(request.getRequestByte());
         try {
             while (true) {
                 startCommunication();
@@ -232,8 +220,8 @@ public class CommunicationService {
      * @param parameter
      *            to be update in the heat pump
      */
-    public Map<String, Object> writeData(Object newValue, String channelId, Request updateRequest,
-            RecordDefinition updateRecord) throws StiebelHeatPumpException {
+    public Map<String, Object> writeData(Object newValue, String channelId, RecordDefinition updateRecord)
+            throws StiebelHeatPumpException {
         Map<String, Object> data = new HashMap<>();
 
         try {
@@ -242,17 +230,14 @@ public class CommunicationService {
             // decode the new value
             // into a current response , the response is available in the
             // connector object
-            byte[] requestMessage = createRequestMessage(updateRequest);
+            byte[] requestMessage = createRequestMessage(updateRecord.getRequestByte());
             byte[] response = getData(requestMessage);
             response = parser.fixDuplicatedBytes(response);
-            data = parser.parseRecords(response, updateRequest);
-
-            // lookup parameter value in the data
-            Object currentValue = data.get(channelId);
+            Object currentValue = parser.parseRecord(response, updateRecord);
 
             // create new set request created from the existing read response
             byte[] requestUpdateMessage = parser.composeRecord(currentValue, newValue, response, updateRecord);
-            if (requestMessage.equals(response)) {
+            if (Arrays.equals(requestMessage, response)) {
                 logger.debug("Current value for {} is already {}.", channelId, newValue);
                 return data;
             }
@@ -263,11 +248,12 @@ public class CommunicationService {
 
             response = setData(requestUpdateMessage);
             response = parser.fixDuplicatedBytes(response);
-
             if (parser.setDataCheck(response)) {
                 logger.debug("Updated parameter {} successfully.", channelId);
+                data.put(channelId, newValue);
             } else {
                 logger.debug("Update for parameter {} failed!", channelId);
+                data.put(channelId, currentValue);
             }
 
         } catch (StiebelHeatPumpException e) {
@@ -285,20 +271,20 @@ public class CommunicationService {
      *            request byte to send to heat pump
      */
     public void dumpResponse(byte requestByte) {
-        int tmp = MAXRETRIES;
-        MAXRETRIES = 1;
+        int tmp = maxRetry;
+        maxRetry = 1;
         String requestStr = String.format("%02X", requestByte);
         logger.info("Prepare response for request byte {}", requestStr);
         Request request = new Request();
         request.setRequestByte(requestByte);
 
-        byte requestMessage[] = createRequestMessage(request);
+        byte[] requestMessage = createRequestMessage(request.getRequestByte());
 
         if (!establishRequest(requestMessage)) {
             logger.info("Could not get response for request byte {}", requestStr);
             return;
         }
-        MAXRETRIES = tmp;
+        maxRetry = tmp;
         try {
             connector.write(DataParser.ESCAPE);
             byte[] response = receiveData();
@@ -348,7 +334,7 @@ public class CommunicationService {
      *         00 CE -> data, e.g. short value as 2 bytes -> 206 -> 2.06 version
      *         10 03 -> Footer ending the communication
      */
-    private byte[] getData(byte request[]) {
+    private byte[] getData(byte[] request) {
         if (!establishRequest(request)) {
             return new byte[0];
         }
@@ -444,11 +430,11 @@ public class CommunicationService {
         int requestRetry = 0;
         int retry = 0;
         try {
-            while (requestRetry < MAXRETRIES) {
+            while (requestRetry < maxRetry) {
                 connector.write(request);
                 retry = 0;
                 byte singleByte;
-                while ((!dataAvailable) & (retry < MAXRETRIES)) {
+                while ((!dataAvailable) && (retry < maxRetry)) {
                     try {
                         singleByte = connector.get();
                     } catch (Exception e) {
@@ -460,7 +446,6 @@ public class CommunicationService {
                     if (buffer[0] != DataParser.DATAAVAILABLE[0] || buffer[1] != DataParser.DATAAVAILABLE[1]) {
                         continue;
                     }
-                    dataAvailable = true;
                     return true;
                 }
                 logger.debug("retry request!");
@@ -488,12 +473,12 @@ public class CommunicationService {
         byte singleByte;
         int numBytesReadTotal;
         int retry;
-        buffer = new byte[INPUT_BUFFER_LENGTH];
+        buffer = new byte[inputBufferLength];
         retry = 0;
         numBytesReadTotal = 0;
         boolean endOfMessage = false;
 
-        while (!endOfMessage & retry < MAXRETRIES) {
+        while (!endOfMessage & retry < maxRetry) {
             try {
                 singleByte = connector.get();
             } catch (Exception e) {
@@ -510,7 +495,6 @@ public class CommunicationService {
                 // we have reached the end of the response
                 endOfMessage = true;
                 logger.debug("reached end of response message.");
-                break;
             }
         }
 
@@ -527,10 +511,10 @@ public class CommunicationService {
      *            message
      * @return request message byte[]
      */
-    private byte[] createRequestMessage(Request request) {
+    private byte[] createRequestMessage(byte requestByte) {
         short checkSum;
-        byte[] requestMessage = new byte[] { DataParser.HEADERSTART, DataParser.GET, (byte) 0x00,
-                request.getRequestByte(), DataParser.ESCAPE, DataParser.END };
+        byte[] requestMessage = new byte[] { DataParser.HEADERSTART, DataParser.GET, (byte) 0x00, requestByte,
+                DataParser.ESCAPE, DataParser.END };
         try {
             // prepare request message
             checkSum = parser.calculateChecksum(requestMessage);

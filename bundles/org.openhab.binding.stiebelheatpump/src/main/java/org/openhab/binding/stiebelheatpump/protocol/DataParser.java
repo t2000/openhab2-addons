@@ -168,7 +168,7 @@ public class DataParser {
 
         // change response byte to setting command
         response[1] = SET;
-        if (currentValue instanceof Boolean) {
+        if (newValue instanceof Boolean) {
             Boolean currentValueBoolean = (Boolean) currentValue;
             Boolean newValueBoolean = (Boolean) newValue;
             if (currentValueBoolean.equals(newValueBoolean)) {
@@ -183,21 +183,8 @@ public class DataParser {
                 return response;
             }
         }
-
         Short newValueShort = 0;
-
-        if (currentValue instanceof Short) {
-            Short currentValueShort = (Short) currentValue;
-            newValueShort = (Short) newValue;
-            if (newValueShort > recordDefinition.getMax() || newValueShort < recordDefinition.getMin()) {
-                logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
-                        recordDefinition.getChannelid(), newValue, recordDefinition.getMax(),
-                        recordDefinition.getMin());
-                throw new StiebelHeatPumpException("invalid value !");
-            }
-        }
-        if (currentValue instanceof Double) {
-            Double currentValueDouble = (Double) currentValue;
+        if (newValue instanceof Double) {
             Double newValueDouble = (Double) newValue;
             if (newValueDouble > recordDefinition.getMax() || newValueDouble < recordDefinition.getMin()) {
                 logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
@@ -206,6 +193,16 @@ public class DataParser {
                 throw new StiebelHeatPumpException("invalid value !");
             }
             newValueShort = (short) (newValueDouble / recordDefinition.getScale());
+        }
+
+        if (newValue instanceof Short) {
+            newValueShort = (Short) newValue;
+            if (newValueShort > recordDefinition.getMax() || newValueShort < recordDefinition.getMin()) {
+                logger.warn("The record {} can not be set to value {} as allowed range is {}<-->{} !",
+                        recordDefinition.getChannelid(), newValue, recordDefinition.getMax(),
+                        recordDefinition.getMin());
+                throw new StiebelHeatPumpException("invalid value !");
+            }
         }
 
         // create byte values for single / double byte values

@@ -15,6 +15,9 @@ package org.openhab.binding.stiebelheatpump.protocol;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * request class for Stiebel heat pump.
  *
@@ -22,21 +25,21 @@ import java.util.List;
  */
 public class Request {
 
+    private Logger logger = LoggerFactory.getLogger(Request.class);
     private String name;
-
     private String description;
-
     private Byte requestByte;
-
-    private List<RecordDefinition> recordDefinitions = new ArrayList<RecordDefinition>();
+    private List<RecordDefinition> recordDefinitionList;
 
     public Request() {
+        this.recordDefinitionList = new ArrayList<>();
     }
 
     public Request(String name, String description, byte requestByte) {
         this.name = name;
         this.description = description;
         this.requestByte = requestByte;
+        this.recordDefinitionList = new ArrayList<>();
     }
 
     public String getName() {
@@ -64,10 +67,20 @@ public class Request {
     }
 
     public List<RecordDefinition> getRecordDefinitions() {
-        return recordDefinitions;
+        return recordDefinitionList;
     }
 
     public void setRecordDefinitions(List<RecordDefinition> recordDefinitions) {
-        this.recordDefinitions = recordDefinitions;
+        this.recordDefinitionList = recordDefinitions;
+    }
+
+    public RecordDefinition getRecordDefinitionByChannelId(String channelId) {
+        for (RecordDefinition record : recordDefinitionList) {
+            if (record.getChannelid().equalsIgnoreCase(channelId)) {
+                return record;
+            }
+        }
+        logger.warn("Could not find valid record definition for {},  please verify thing definition.", channelId);
+        return null;
     }
 }

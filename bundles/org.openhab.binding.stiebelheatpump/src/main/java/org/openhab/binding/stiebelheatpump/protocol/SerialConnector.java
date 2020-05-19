@@ -47,7 +47,7 @@ public class SerialConnector implements ProtocolConnector {
     private CircularByteBuffer buffer;
 
     @Override
-    public void connect(SerialPortManager portManager, String device, int baudrate) {
+    public void connect(SerialPortManager portManager, String device, int baudrate) throws StiebelHeatPumpException {
         try {
             this.portManager = portManager;
             SerialPortIdentifier portIdentifier = portManager.getIdentifier(device);
@@ -67,11 +67,11 @@ public class SerialConnector implements ProtocolConnector {
         } catch (IOException e) {
             @NonNull
             Stream<@NonNull SerialPortIdentifier> ports = portManager.getIdentifiers();
-            throw new RuntimeException(
+            throw new StiebelHeatPumpException(
                     "Serial port " + device + "with given name does not exist. Available ports: " + ports.toString(),
                     e);
         } catch (Exception e) {
-            throw new RuntimeException("Could not init port", e);
+            throw new StiebelHeatPumpException("Could not init port : " + e.getMessage());
         }
     }
 
@@ -122,25 +122,26 @@ public class SerialConnector implements ProtocolConnector {
     }
 
     @Override
-    public void write(byte[] data) {
+    public void write(byte[] data) throws StiebelHeatPumpException {
         try {
-            logger.debug("Send request message : {}", DataParser.bytesToHex(data));
+            String dataStr = DataParser.bytesToHex(data);
+            logger.debug("Send request message : {}", dataStr);
             out.write(data);
             out.flush();
-
         } catch (IOException e) {
-            throw new RuntimeException("Could not write", e);
+            throw new StiebelHeatPumpException("Could not write " + e.getMessage());
         }
     }
 
     @Override
-    public void write(byte data) {
+    public void write(byte data) throws StiebelHeatPumpException {
         try {
-            logger.trace(String.format("Send %02X", data));
+            String byteStr = String.format("Send %02X", data);
+            logger.trace(byteStr);
             out.write(data);
             out.flush();
         } catch (IOException e) {
-            throw new RuntimeException("Could not write", e);
+            throw new StiebelHeatPumpException("Could not write " + e.getMessage());
         }
     }
 

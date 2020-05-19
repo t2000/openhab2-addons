@@ -49,7 +49,6 @@ public class ConfigLocator {
     public ConfigLocator(String file) {
         this.file = file;
         getconfig();
-
     }
 
     /**
@@ -76,7 +75,6 @@ public class ConfigLocator {
      * @return All request of the configuration
      */
     public List<Request> getRequests() {
-
         return requests.getRequests();
     }
 
@@ -86,7 +84,6 @@ public class ConfigLocator {
      * @return All records of the configuration
      */
     public List<Record> getRecords() {
-
         return records.getRecords();
     }
 }
