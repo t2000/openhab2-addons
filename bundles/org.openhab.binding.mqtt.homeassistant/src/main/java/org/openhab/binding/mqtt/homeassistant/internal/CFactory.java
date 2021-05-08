@@ -75,6 +75,8 @@ public class CFactory {
                     return new ComponentSensor(componentConfiguration);
                 case "switch":
                     return new ComponentSwitch(componentConfiguration);
+                case "vacuum":
+                    return new ComponentVacuum(componentConfiguration);
             }
         } catch (UnsupportedOperationException e) {
             logger.warn("Not supported", e);
