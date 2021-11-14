@@ -47,6 +47,7 @@ public class ConfigParser {
         ClassLoader classloader = this.getClass().getClassLoader();
 
         XStream xstream = new XStream(new StaxDriver());
+        xstream.allowTypesByWildcard(new String[] { Records.class.getPackageName() + ".**" });
         xstream.setClassLoader(classloader);
         xstream.ignoreUnknownElements();
         xstream.processAnnotations(Record.class);
