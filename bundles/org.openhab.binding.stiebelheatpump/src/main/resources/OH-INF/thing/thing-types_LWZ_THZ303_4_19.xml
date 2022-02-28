@@ -39,6 +39,7 @@
 					/dev/ttyUSB0 for Linux.
 				</description>
 				<default>/dev/ttyS4</default>
+				<limitToOptions>false</limitToOptions>
 			</parameter>
 			<parameter name="baudRate" type="integer">
 				<label>Baud rate</label>

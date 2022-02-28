@@ -36,6 +36,7 @@
 				<description>Serial port to use connecting to the heat pump device e.g. COM1 for Windows and /dev/ttyS0 or
 					/dev/ttyUSB0 for Linux.</description>
 				<default>/dev/ttyUSB0</default>
+				<limitToOptions>false</limitToOptions>
 			</parameter>
 			<parameter name="baudRate" type="integer">
 				<label>Baud rate</label>
