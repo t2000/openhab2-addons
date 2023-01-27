@@ -473,15 +473,15 @@ public class StiebelHeatPumpHandler extends BaseThingHandler {
                     updateState(channelUID, new StringType(value.toString()));
                     break;
                 default:
-                    updateState(channelUID, new DecimalType((Double) value));
+                    updateState(channelUID, new DecimalType(value));
             }
             return;
         }
         if (value instanceof Short) {
-            updateState(channelUID, new DecimalType((short) value));
+            updateState(channelUID, new DecimalType(value));
         }
         if (value instanceof Integer) {
-            updateState(channelUID, new DecimalType((int) value));
+            updateState(channelUID, new DecimalType(value));
         }
     }
 
